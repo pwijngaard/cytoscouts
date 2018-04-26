@@ -2,7 +2,7 @@
 """
 Created on Mon Oct  2 09:55:28 2017
 @author: Petra Wijngaard
-latest version Jan 2018
+latest version 4 26 2018
 """
 import sys
 import csv
@@ -13,7 +13,7 @@ def main():#print the outputs
     '''
     This is the main function.
     '''
-    print('*✭˚･ﾟ✧*･ﾟ   it\'s cytoscouts   v.4    * ✭˚･ﾟ✧*･ﾟ*')
+    print('*✭˚･ﾟ✧*･ﾟ   it\'s cytoscouts   v.5    * ✭˚･ﾟ✧*･ﾟ*')
     edgeList,nodeSet = importtsv()
     print('\nThis interactome has', (len(edgeList)),'edges and contains', len(nodeSet)  , 'nodes.')
     deg=get_degree (edgeList,nodeSet)
@@ -34,7 +34,7 @@ def main():#print the outputs
         print(nNodes)
         print (len(nNodes))
         print (type(nNodes))
-        deg=getSubDegree(nNodes,edgeList)
+        deg=getSubDegree(nNodes,edgeList,uniprot)
         hist,x,y=get_histo(deg)
         lx,ly=computeLog(x,y)
         plotter2(x,y,lx,ly,uniprot)
@@ -75,7 +75,7 @@ def main():#print the outputs
         print('# of tuples: ',len(collapsedTupleSet) )
         print(skipped2,' skipped.')   
         print('# of nodes: ',len(collapsedNodeSet) )
-        deg=getSubDegree (nNodes,collapsedTupleSet)
+        deg=getSubDegree (nNodes,collapsedTupleSet,commonName)
         hist,x,y=get_histo(deg)
         lx,ly=computeLog(x,y)
         plotter4(x,y,lx,ly,commonName)
@@ -349,7 +349,7 @@ def subsetEdges(uniprot,edgeList,nNodes):
             if row[1] == node:
                 edgeSub.append([row[0],row[1]])
     return edgeSub
-def getSubDegree (nNodes,edgeList):#gather nodes by number of edges
+def getSubDegree (nNodes,edgeList,proteinName):#gather nodes by number of edges
     """
     pseudocode:
     for {X} from nNodes
@@ -363,11 +363,11 @@ def getSubDegree (nNodes,edgeList):#gather nodes by number of edges
     for row in edgeList:
         if row[0] in nNodes:
             deg[row[0]]+=1 #increase value by one if a given nNodes key is row 0 in edgeList 
-            if (row[1],row[0]) in edgeList and row[0] == 'shot':
+            if (row[1],row[0]) in edgeList and row[0] == proteinName:
                 print(row,'!')
         if row[1] in nNodes:
             deg[row[1]]+=1 #increase value by one if a given nNodes key is row 1 in edgeList 
-            if (row[1],row[0]) in edgeList and row[0] == 'shot':
+            if (row[1],row[0]) in edgeList and row[0] == proteinName:
                 print(row,'!')
     return deg
 
