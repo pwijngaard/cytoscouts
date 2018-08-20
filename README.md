@@ -14,4 +14,6 @@ When using the script the user has five options:
 
 4 Collapse the interactome then get a list of the neighbors of a given common name in the collapsed interactome along with a histogram of the neighbors of the common name in the collapsed interactome and save each to file in the current the directory.
 
+A more thorough explanation of cytoscouts can be found in section two of thesis.pdf.
+
 
