@@ -2,87 +2,145 @@
 """
 Created on Mon Oct  2 09:55:28 2017
 @author: Petra Wijngaard
-latest version 4 26 2018
+latest version 8 19 2018
 """
-import sys
 import csv
 import math
 import matplotlib.pyplot as plt
+import re
 #print(fname)
-def main():#print the outputs
+def main():
     '''
-    This is the main function.
+    Displays banner, takes interactome, provides summary statistics and calls options function for further analysis
     '''
-    print('*✭˚･ﾟ✧*･ﾟ   it\'s cytoscouts   v.5    * ✭˚･ﾟ✧*･ﾟ*')
-    edgeList,nodeSet = importtsv()
+    print('*✭˚･ﾟ✧*･ﾟ   it\'s cytoscouts   v.6    * ✭˚･ﾟ✧*･ﾟ*')
+    edgeList,nodeSet = importCSV()#asks for an interactome 
     print('\nThis interactome has', (len(edgeList)),'edges and contains', len(nodeSet)  , 'nodes.')
-    deg=get_degree (edgeList,nodeSet)
-    #print('Here is a list of nodes and the number of their edges: ', deg)
-    dictionary=importdictionary() #outputs the whole dictionary
-    #print(dictionary)
+    deg=getDegree (edgeList,nodeSet)
+    printoptions(edgeList,nodeSet,deg)
+    return
+
+def importCSV ():#get the CSV
+    '''
+    TO DO:
+        [.6] program doesnt crash if not supplied an ending
+        []accept files with .txt and .tsv endings
+        []
+        
+            
+    '''
+#    validateFileName = None
+#    while validateFileName == None:
     
-    printit=input('\nPress:\n 0 to print histogram, \n 1 to get neighbors of an id, \n 2 to get secondary neighbors, \n 3 to collapse the interactome, \n 4 to input node for collapsed interactome, \n otherwise any key to exit: ')
+#        validate = re.compile(r'.*.csv') #(r'.csv|.tsv|.txt')
+#        validateFileName = validate.search(fileName)  
+    nodeSet = set()
+    edgeList = []
+    while True:
+        try:
+            fileName = input('Please type .csv file here: ')
+            with open(fileName, newline='') as cSVFile:
+                reader = csv.reader(cSVFile,dialect="excel-tab")
+                for r in reader:
+                    if r[0]=='UniProt1':#skip header
+                        continue
+                    if r[1]=='UniProt2':#skip header
+                        continue
+                    edgeList.append([r[0],r[1]])#pair of nodes, aka an edge
+                    nodeSet.add(r[0])#node 1
+                    nodeSet.add(r[1])#node2
+            break
+        
+        except Exception:
+            print ("Could not read file:", fileName)
+        
+    #print(edgeList[0:10])#shows us some edges
+    return edgeList,nodeSet#saves these two variables
+
+
+def printoptions (edgeList,nodeSet,deg):
+    printit=input('\nPress:\n 0 to print histograms, \n 1 to get neighbors of an ID, \n 2 to get secondary neighbors of an ID (deprecated), \n 3 to collapse the interactome (requires reference CSV), \n 4 to input common name node for collapsed interactome (requires reference CSV), \n otherwise any key to exit: ')
     if printit == '0':
         hist,x,y=get_histo(deg)
         lx,ly=computeLog(x,y)
         plotter1(x,y,lx,ly)
     if printit == '1': #asks for uniprot id and list of list of edges
-        uniprot=input('type id here: ')
+        '''
+        [] rename commonDegs to make it make more sense
+        '''
+        uniprot=input('Enter id here: ')
         nNodes = neighbors(uniprot,edgeList)
+        collapsed = False 
         #edgeSub = subsetEdges(uniprot,edgeList,nNodes)
-        print("primary neighbors")
-        print(nNodes)
-        print (len(nNodes))
-        print (type(nNodes))
-        deg=getSubDegree(nNodes,edgeList,uniprot)
+        print("Primary neighbors")
+        #print(nNodes)
+        #print (len(nNodes))
+        #print (type(nNodes))
+        deg=getSubDegree(nNodes,edgeList,uniprot,collapsed)
+        print('Neighbors list saved to',uniprot,'neighbors.csv')
+        commonDegs=makeCollapsedDeg(nNodes,deg)#it's still uncollapsed, i know, ill change it
+        makeFile(commonDegs,uniprot)
         hist,x,y=get_histo(deg)
         lx,ly=computeLog(x,y)
         plotter2(x,y,lx,ly,uniprot)
-        commonNames=useDictionary(dictionary,nNodes,deg)
-#        for item in commonNames: #print a line from a list of strings rather than the list 
-#            print(item)
-        makeFile(commonNames,uniprot)
+      
     if printit == '2': #asks for uniprot id and list of list of edges
         uniprot=input('type id here: ')
         nNodes = neighbors(uniprot,edgeList)
         nNodes2=neighbor2 (nNodes,edgeList)
+        collapsed = False 
         print("primary neighbors")
         print(nNodes)
         print (len(nNodes))
         print("secondary neighbors")
         print (len(nNodes2))
     if printit == '3':
+        '''
+        TODO
+            []make file that shows what IDs the common names correspond to
+        '''
+        collapsed = True
+        dictionary=importdictionary() #creates a common name dictionary from an attached reference file
         collapsedTupleSet, skipped = collapseInteractome (dictionary,edgeList)
         collapsedNodeSet, skipped2 = collapseNodes (dictionary,nodeSet)
         print('\n Collapsing the interactome...\n',skipped,'edges skipped.',skipped2,'nodes skipped.')   
         print('# of edges in collapsed interactome: ',len(collapsedTupleSet) )   
         print('# of nodes collapsed interactome: ',len(collapsedNodeSet),'\n Histogram saved to .pdf.' )
-        deg=get_degree (collapsedTupleSet,collapsedNodeSet)
+        deg=getDegree (collapsedTupleSet,collapsedNodeSet)
         hist,x,y=get_histo(deg)
         lx,ly=computeLog(x,y)
         plotter3(x,y,lx,ly)
+#        commonNames=useDictionary(dictionary,nNodes,deg)
+#        for item in commonNames: #print a line from a list of strings rather than the list print(item)
+#       makeFile(commonNames,uniprot)
     if printit == '4':
+        collapsed = True
         commonName=input('type common name here: ')
+        dictionary=importdictionary() #creates a common name dictionary from an attached reference file
         collapsedTupleSet, skipped = collapseInteractome (dictionary,edgeList)
         collapsedNodeSet, skipped2 = collapseNodes (dictionary,nodeSet)
         nNodes = neighbors(commonName,collapsedTupleSet)
         #edgeSub = subsetEdges(uniprot,edgeList,nNodes)
+        '''
         print("primary neighbors")
         print(nNodes)
         print (len(nNodes))
         print (type(nNodes))
+        '''
         print(skipped,' skipped.')   
         print('# of tuples: ',len(collapsedTupleSet) )
         print(skipped2,' skipped.')   
         print('# of nodes: ',len(collapsedNodeSet) )
-        deg=getSubDegree (nNodes,collapsedTupleSet,commonName)
+        print('Neighbors list saved to',commonName,'neighbors.csv')
+        deg=getSubDegree (nNodes,collapsedTupleSet,commonName,collapsed)
         hist,x,y=get_histo(deg)
         lx,ly=computeLog(x,y)
         plotter4(x,y,lx,ly,commonName)
         commonDegs=makeCollapsedDeg(nNodes,deg)
         makeFile(commonDegs,commonName)
-        print(deg)
+        #print(deg)
         #tupleSettoLoL(collapsedTupleSet)
+        return
 
 def makeCollapsedDeg (nNodes,deg):
     #makes a list of strings containing uniprot, common name, and degree then a new line
@@ -93,7 +151,7 @@ def makeCollapsedDeg (nNodes,deg):
 
 def makeFile (commonNames,uniprot):
    file= open(uniprot+" neighbors.csv", "w")
-   file.write ('Uniprot ID, Common Name, Degree\n')#wirtes the header
+   file.write ('Uniprot ID/Common Name, Degree\n')#wirtes the header
    for row in commonNames:#wites the items from a list of strings
        file.write (row)
    file.close()
@@ -149,10 +207,10 @@ def collapseNodes (dictionary,nodeSet):
 #    return
 #            
 def importdictionary ():#get the TSV
-    fname = 'nodes-uniprot.csv'
+    fName = 'nodes-uniprot.csv'
     dictionary={}
-    with open(fname, newline='') as csvfile:
-        reader = csv.reader(csvfile,dialect="excel-tab")
+    with open(fName, newline='') as cSVFile:
+        reader = csv.reader(cSVFile,dialect="excel-tab")
         for r in reader:
             if r[0]=='uniprot':#skip header
                 continue
@@ -186,19 +244,24 @@ def plotter1(x,y,lx,ly):#plots for whole histogram
     
     
     plt.figure(1)
+    plt.ylim([-80,1750])
+    plt.xlim([-80,8000])
     plt.xlabel('Degree of nodes')
     plt.ylabel('Number of nodes')
     plt.scatter(x,y,marker='.')
     plt.savefig('histogram1.pdf', bbox_inches='tight')
     
-    plt.figure(2)    
+    plt.figure(2)  
+    plt.ylim([0,1750])
     plt.xlim([0,26])
     plt.scatter(x,y,marker='.')
     plt.xlabel('Degree of nodes')
     plt.ylabel('Number of nodes')
     plt.savefig('histogram2.pdf', bbox_inches='tight')
 
-    plt.figure(3)    
+    plt.figure(3)
+    plt.ylim([-0.5,8])
+    plt.xlim([-0.5,9])
     plt.xlabel('log(Degree of nodes)')
     plt.ylabel('log(Number of nodes)')
     plt.scatter(lx,ly,marker='.')
@@ -233,19 +296,24 @@ def plotter3(x,y,lx,ly):#plots for whole histogram
     
     
     plt.figure(1)
+    plt.xlim([-80,8000])
+    plt.ylim([-80,1750])
     plt.xlabel('Degree of nodes')
     plt.ylabel('Number of nodes')
     plt.scatter(x,y,marker='.')
     plt.savefig('collapsedhistogram1.pdf', bbox_inches='tight')
     
-    plt.figure(2)    
+    plt.figure(2)  
+    plt.ylim([0,1750])
     plt.xlim([0,26])
     plt.scatter(x,y,marker='.')
     plt.xlabel('Degree of nodes')
     plt.ylabel('Number of nodes')
     plt.savefig('collapsedhistogram2.pdf', bbox_inches='tight')
 
-    plt.figure(3)    
+    plt.figure(3)  
+    plt.ylim([-0.5,8])
+    plt.xlim([-0.5,9])
     plt.xlabel('log(Degree of nodes)')
     plt.ylabel('log(Number of nodes)')
     plt.scatter(lx,ly,marker='.')
@@ -282,23 +350,8 @@ def computeLog(x,y):
             lx.append(math.log(x[i]))
             ly.append(math.log(y[i]))
     return (lx,ly)
-def importtsv ():#get the TSV
-    fname = input('Please type .csv file here: ')
-    nodeSet = set()
-    edgeList = []
-    with open(fname, newline='') as csvfile:
-        reader = csv.reader(csvfile,dialect="excel-tab")
-        for r in reader:
-            if r[0]=='UniProt1':#skip header
-                continue
-            if r[1]=='UniProt2':#skip header
-                continue
-            edgeList.append([r[0],r[1]])#pair of nodes, aka an edge
-            nodeSet.add(r[0])#node 1
-            nodeSet.add(r[1])#node2
-    #print(edgeList[0:10])#shows us some edges
-    return edgeList,nodeSet#saves these two variables
-def get_degree (edgeList,nodeSet):#gather nodes by number of edges
+
+def getDegree (edgeList,nodeSet):#gather nodes by number of edges
     """
     pseudocode:
     for {X} from nodeSet
@@ -349,7 +402,7 @@ def subsetEdges(uniprot,edgeList,nNodes):
             if row[1] == node:
                 edgeSub.append([row[0],row[1]])
     return edgeSub
-def getSubDegree (nNodes,edgeList,proteinName):#gather nodes by number of edges
+def getSubDegree (nNodes,edgeList,proteinName,collapsed):#gather nodes by number of edges
     """
     pseudocode:
     for {X} from nNodes
@@ -357,20 +410,16 @@ def getSubDegree (nNodes,edgeList,proteinName):#gather nodes by number of edges
     d['X']= degree
 
     """
+    print(proteinName)
     deg = {}
     for item in nNodes:
         deg[item]=0 #adds key and sets value to zero, key value pair 
     for row in edgeList:
         if row[0] in nNodes:
             deg[row[0]]+=1 #increase value by one if a given nNodes key is row 0 in edgeList 
-            if (row[1],row[0]) in edgeList and row[0] == proteinName:
-                print(row,'!')
         if row[1] in nNodes:
             deg[row[1]]+=1 #increase value by one if a given nNodes key is row 1 in edgeList 
-            if (row[1],row[0]) in edgeList and row[0] == proteinName:
-                print(row,'!')
+        if collapsed == True and (row[1],row[0]) in edgeList and row[0] == proteinName:
+            print('Be aware,',proteinName,'is neighbors with itself!')#this breaks option 1
     return deg
-
-
-if __name__ == '__main__':
-    main()
+main()
