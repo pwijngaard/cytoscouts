@@ -2,14 +2,14 @@
 """
 Created on Mon Oct  2 09:55:28 2017
 @author: Petra Wijngaard
-latest version 8 21 2018
+latest version 8 22 2018
 
 TODO:
 [] make it not crash when given invalid inputs on option 1 and 4
 [] enable a config file with include configparser
     options to include:
         [X]default interactome
-        []remove header
+        [x]remove header
         histogram variables
             []1
             []2
@@ -34,7 +34,7 @@ config.set('HELP', '# comment here')
        
 config['BASIC']= {
         'default_interactome':0,
-        'header_skip':1,
+        'skip_header':1,
         'reference_dictionary':0,
         }
 config['HISTOGRAM'] = {
@@ -57,7 +57,7 @@ def main():
     '''
     Displays banner, takes interactome, provides summary statistics and calls options function for further analysis
     '''
-    print('*✭˚･ﾟ✧*･ﾟ   it\'s cytoscouts   v0.6.1    * ✭˚･ﾟ✧*･ﾟ*')
+    print('*✭˚･ﾟ✧*･ﾟ   it\'s cytoscouts   v0.6.2    * ✭˚･ﾟ✧*･ﾟ*')
     edgeList,nodeSet=checkDefaultInteractome() #checks for a default interactome and if there isnt one asks for an interactome
     print('\nThis interactome has', (len(edgeList)),'edges and contains', len(nodeSet)  , 'nodes.')
     deg=getDegree (edgeList,nodeSet) #calculates the degree
@@ -88,7 +88,8 @@ def importCSV ():#get the CSV
     TO DO:
         [X] program doesnt crash if not supplied an ending
         [X]accept files with .txt and .tsv endings
-        []enable skip header <=================================
+        [x]enable skip header <=================================
+        []count number of columns
 
 
     '''
@@ -103,19 +104,18 @@ def importCSV ():#get the CSV
         try:
             fileName = input('Please type .csv file here: ')
             with open(fileName, newline='') as cSVFile:
+                if config['BASIC']['skip_header'] == '1':
+                    next(cSVFile)
                 reader = csv.reader(cSVFile,dialect="excel-tab")
                 for r in reader:
-                    if r[0]=='UniProt1':#skip header
-                        continue
-                    if r[1]=='UniProt2':#skip header
-                        continue
-                    edgeList.append([r[0],r[1]])#pair of nodes, aka an edge
-                    nodeSet.add(r[0])#node 1
-                    nodeSet.add(r[1])#node2
+                   edgeList.append([r[0],r[1]])#pair of nodes, aka an edge
+                   nodeSet.add(r[0])#node 1
+                   nodeSet.add(r[1])#node2
+
             break
 
-        except Exception:
-            print ("Could not read file:", fileName)
+        except OSError:
+            print ("Could not read file. Did you remember the extension? Invalid file:", fileName)
 
     #print(edgeList[0:10])#shows us some edges
     return edgeList,nodeSet#saves these two variables
@@ -123,28 +123,29 @@ def importCSV ():#get the CSV
 def defaultCSV ():#get the CSV
     '''
     TO DO:
-        []enable skip header
+        [x]enable skip header
+        []count number of columns
 
     '''
 
     nodeSet = set()
     edgeList = []
-    try:
-        fileName = config['BASIC']['default_interactome']
-        with open(fileName, newline='') as cSVFile:
-            reader = csv.reader(cSVFile,dialect="excel-tab")
-            for r in reader:
-                if r[0]=='UniProt1':#skip header
-                    continue
-                if r[1]=='UniProt2':#skip header
-                    continue
-                edgeList.append([r[0],r[1]])#pair of nodes, aka an edge
-                nodeSet.add(r[0])#node 1
-                nodeSet.add(r[1])#node2
+    while True:
+        try:
+            fileName = config['BASIC']['default_interactome']
+            with open(fileName, newline='') as cSVFile:
+                if config['BASIC']['skip_header'] == '1':
+                    next(cSVFile)
+                reader = csv.reader(cSVFile,dialect="excel-tab")
+                for r in reader:
+                   edgeList.append([r[0],r[1]])#pair of nodes, aka an edge
+                   nodeSet.add(r[0])#node 1
+                   nodeSet.add(r[1])#node2
 
+            break
 
-    except Exception:
-        print ("Could not read file, please enter a valid filename for now and change cytoscouts_config.ini when you have the chance. Invalid file:", fileName)
+        except OSError:
+                print ("Could not read default file, please enter a valid filename for now and change cytoscouts_config.ini when you have the chance. Invalid file:", fileName)
         edgeList,nodeSet=importCSV()#defaults to manual entry
     
 
@@ -152,12 +153,12 @@ def defaultCSV ():#get the CSV
 
 
 def printoptions (edgeList,nodeSet,deg):
-    printit=input('\nPress:\n 0 to print histograms of the uncollapsed interactome, \n 1 to get neighbors of an ID, \n 2 (DEPRECATED) to get secondary neighbors of an ID, \n 3 to collapse the interactome (requires reference CSV), \n 4 to input common name node for collapsed interactome (requires reference CSV), \n otherwise any key to exit: ')
-    if printit == '0':
+    printit=input('\nPress:\n 1 to print histograms of the uncollapsed interactome, \n 2 to get neighbors of an ID, \n 3 (DEPRECATED) to get secondary neighbors of an ID, \n 4 to collapse the interactome (requires reference CSV), \n 5 to input common name node for collapsed interactome (requires reference CSV), \n otherwise any key to exit: ')
+    if printit == '1':
         hist,x,y=get_histo(deg)
         lx,ly=computeLog(x,y)
         plotter1(x,y,lx,ly)
-    if printit == '1': #asks for uniprot id and list of list of edges
+    if printit == '2': #asks for uniprot id and list of list of edges
         '''
         [] rename commonDegs to make it make more sense
         '''
@@ -177,7 +178,7 @@ def printoptions (edgeList,nodeSet,deg):
         lx,ly=computeLog(x,y)
         plotter2(x,y,lx,ly,uniprot)
 
-    if printit == '2': #asks for uniprot id and list of list of edges
+    if printit == '3': #asks for uniprot id and list of list of edges
         uniprot=input('type id here: ')
         nNodes = neighbors(uniprot,edgeList)
         nNodes2=neighbor2 (nNodes,edgeList)
@@ -187,7 +188,7 @@ def printoptions (edgeList,nodeSet,deg):
         print (len(nNodes))
         print("secondary neighbors")
         print (len(nNodes2))
-    if printit == '3':
+    if printit == '4':
         '''
         TODO
             []make file that shows what IDs the common names correspond to
@@ -206,7 +207,7 @@ def printoptions (edgeList,nodeSet,deg):
 #        commonNames=useDictionary(dictionary,nNodes,deg)
 #        for item in commonNames: #print a line from a list of strings rather than the list print(item)
 #       makeFile(commonNames,uniprot)
-    if printit == '4':
+    if printit == '5':
         collapsed = True
         commonName=input('type common name here: ')
         dictionary=importdictionary() #creates a common name dictionary from an attached reference file
@@ -243,12 +244,16 @@ def makeCollapsedDeg (nNodes,deg):
     return commonDegs
 
 def makeFile (commonNames,uniprot):
-   file= open(uniprot+" neighbors.csv", "w")
-   file.write ('Uniprot ID/Common Name, Degree\n')#wirtes the header
-   for row in commonNames:#wites the items from a list of strings
-       file.write (row)
-   file.close()
-   return ()
+    '''
+    TODO:
+        have it automatically pick between Uniprot ID and common name
+    '''
+    file= open(uniprot+" neighbors.csv", "w")
+    file.write ('Uniprot ID/Common Name, Degree\n')#wirtes the header
+    for row in commonNames:#wites the items from a list of strings
+        file.write (row)
+    file.close()
+    return ()
 '''
 this one makes it as a list
 def useDictionary (dictionary,nNodes,deg):
