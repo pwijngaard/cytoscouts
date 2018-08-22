@@ -2,38 +2,101 @@
 """
 Created on Mon Oct  2 09:55:28 2017
 @author: Petra Wijngaard
-latest version 8 19 2018
+latest version 8 20 2018
+
+TODO:
+[] make it not crash when given invalid inputs on option 1 and 4
+[] enable a config file with include configparser
+    options to include:
+        [X]default interactome
+        []remove header
+        histogram variables
+            []1
+            []2
+            []3
+            []4
+        []reference dictionary
 """
+import configparser
 import csv
 import math
 import matplotlib.pyplot as plt
-import re
-#print(fname)
+import os.path
+'''
+Default Configuration Section
+'''
+config = configparser.ConfigParser(allow_no_value=True)
+
+#Setting up the default configuration file
+
+config.add_section('HELP')
+config.set('HELP', '# comment here')
+       
+config['BASIC']= {
+        'default_interactome':0,
+        'header_skip':1,
+        'reference_dictionary':0,
+        }
+config['HISTOGRAM'] = {
+        }
+
+
+if os.path.isfile('cytoscouts_config.ini') != True:  #check to see if there's a config file already
+    print('No cytoscouts_config.ini file found, so one was written with default settings.')
+    with open('cytoscouts_config.ini', 'w') as configfile: #if there isnt write one to file
+        config.write(configfile)
+config.read('cytoscouts_config.ini')
+
+
+'''
+Functions Section
+'''
+
+
 def main():
     '''
     Displays banner, takes interactome, provides summary statistics and calls options function for further analysis
     '''
-    print('*✭˚･ﾟ✧*･ﾟ   it\'s cytoscouts   v.6    * ✭˚･ﾟ✧*･ﾟ*')
-    edgeList,nodeSet = importCSV()#asks for an interactome 
+    print('*✭˚･ﾟ✧*･ﾟ   it\'s cytoscouts   v0.6.1    * ✭˚･ﾟ✧*･ﾟ*')
+    edgeList,nodeSet=checkDefaultInteractome() #checks for a default interactome and if there isnt one asks for an interactome
     print('\nThis interactome has', (len(edgeList)),'edges and contains', len(nodeSet)  , 'nodes.')
-    deg=getDegree (edgeList,nodeSet)
-    printoptions(edgeList,nodeSet,deg)
+    deg=getDegree (edgeList,nodeSet) #calculates the degree
+    printoptions(edgeList,nodeSet,deg) #the options menu
     return
+
+def checkDefaultInteractome ():
+    if config['BASIC']['default_interactome'] == '0':#checks for a default interactome in config.ini
+        print('No default interactome set. To set one, edit cytoscouts_config.ini .')
+        edgeList,nodeSet = importCSV()#asks for an interactome if none is found
+    else:#if there is an interactome asks if you want to keep using it
+        print('Default interactome is set to',config['BASIC']['default_interactome'],'\n Press 1 to continue using it.\n Press 0 to enter a new one.\n You can change the default interactome in cytoscouts_config.ini')
+        while True:#loop in case of bad inputs
+            chooseDefault = input()
+            if chooseDefault == '1':
+                edgeList,nodeSet = defaultCSV()
+                break
+            elif chooseDefault == '0':
+                edgeList,nodeSet = importCSV()#asks for an interactome
+                break
+            else:
+                print('Invalid Choice')
+                    
+    return edgeList,nodeSet
 
 def importCSV ():#get the CSV
     '''
     TO DO:
-        [.6] program doesnt crash if not supplied an ending
-        []accept files with .txt and .tsv endings
-        []
-        
-            
+        [X] program doesnt crash if not supplied an ending
+        [X]accept files with .txt and .tsv endings
+        []enable skip header <=================================
+
+
     '''
 #    validateFileName = None
 #    while validateFileName == None:
-    
+
 #        validate = re.compile(r'.*.csv') #(r'.csv|.tsv|.txt')
-#        validateFileName = validate.search(fileName)  
+#        validateFileName = validate.search(fileName)
     nodeSet = set()
     edgeList = []
     while True:
@@ -50,16 +113,46 @@ def importCSV ():#get the CSV
                     nodeSet.add(r[0])#node 1
                     nodeSet.add(r[1])#node2
             break
-        
+
         except Exception:
             print ("Could not read file:", fileName)
-        
+
     #print(edgeList[0:10])#shows us some edges
+    return edgeList,nodeSet#saves these two variables
+
+def defaultCSV ():#get the CSV
+    '''
+    TO DO:
+        []enable skip header
+
+    '''
+
+    nodeSet = set()
+    edgeList = []
+    try:
+        fileName = config['BASIC']['default_interactome']
+        with open(fileName, newline='') as cSVFile:
+            reader = csv.reader(cSVFile,dialect="excel-tab")
+            for r in reader:
+                if r[0]=='UniProt1':#skip header
+                    continue
+                if r[1]=='UniProt2':#skip header
+                    continue
+                edgeList.append([r[0],r[1]])#pair of nodes, aka an edge
+                nodeSet.add(r[0])#node 1
+                nodeSet.add(r[1])#node2
+
+
+    except Exception:
+        print ("Could not read file, please enter a valid filename for now and change cytoscouts_config.ini when you have the chance. Invalid file:", fileName)
+        edgeList,nodeSet=importCSV()#defaults to manual entry
+    
+
     return edgeList,nodeSet#saves these two variables
 
 
 def printoptions (edgeList,nodeSet,deg):
-    printit=input('\nPress:\n 0 to print histograms, \n 1 to get neighbors of an ID, \n 2 to get secondary neighbors of an ID (deprecated), \n 3 to collapse the interactome (requires reference CSV), \n 4 to input common name node for collapsed interactome (requires reference CSV), \n otherwise any key to exit: ')
+    printit=input('\nPress:\n 0 to print histograms of the uncollapsed interactome, \n 1 to get neighbors of an ID, \n 2 (DEPRECATED) to get secondary neighbors of an ID, \n 3 to collapse the interactome (requires reference CSV), \n 4 to input common name node for collapsed interactome (requires reference CSV), \n otherwise any key to exit: ')
     if printit == '0':
         hist,x,y=get_histo(deg)
         lx,ly=computeLog(x,y)
@@ -70,7 +163,7 @@ def printoptions (edgeList,nodeSet,deg):
         '''
         uniprot=input('Enter id here: ')
         nNodes = neighbors(uniprot,edgeList)
-        collapsed = False 
+        collapsed = False #this is a workaround so that getSubDegree doesnt hang when using option 1
         #edgeSub = subsetEdges(uniprot,edgeList,nNodes)
         print("Primary neighbors")
         #print(nNodes)
@@ -83,12 +176,12 @@ def printoptions (edgeList,nodeSet,deg):
         hist,x,y=get_histo(deg)
         lx,ly=computeLog(x,y)
         plotter2(x,y,lx,ly,uniprot)
-      
+
     if printit == '2': #asks for uniprot id and list of list of edges
         uniprot=input('type id here: ')
         nNodes = neighbors(uniprot,edgeList)
         nNodes2=neighbor2 (nNodes,edgeList)
-        collapsed = False 
+        collapsed = False
         print("primary neighbors")
         print(nNodes)
         print (len(nNodes))
@@ -103,8 +196,8 @@ def printoptions (edgeList,nodeSet,deg):
         dictionary=importdictionary() #creates a common name dictionary from an attached reference file
         collapsedTupleSet, skipped = collapseInteractome (dictionary,edgeList)
         collapsedNodeSet, skipped2 = collapseNodes (dictionary,nodeSet)
-        print('\n Collapsing the interactome...\n',skipped,'edges skipped.',skipped2,'nodes skipped.')   
-        print('# of edges in collapsed interactome: ',len(collapsedTupleSet) )   
+        print('\n Collapsing the interactome...\n',skipped,'edges skipped.',skipped2,'nodes skipped.')
+        print('# of edges in collapsed interactome: ',len(collapsedTupleSet) )
         print('# of nodes collapsed interactome: ',len(collapsedNodeSet),'\n Histogram saved to .pdf.' )
         deg=getDegree (collapsedTupleSet,collapsedNodeSet)
         hist,x,y=get_histo(deg)
@@ -127,9 +220,9 @@ def printoptions (edgeList,nodeSet,deg):
         print (len(nNodes))
         print (type(nNodes))
         '''
-        print(skipped,' skipped.')   
+        print(skipped,' skipped.')
         print('# of tuples: ',len(collapsedTupleSet) )
-        print(skipped2,' skipped.')   
+        print(skipped2,' skipped.')
         print('# of nodes: ',len(collapsedNodeSet) )
         print('Neighbors list saved to',commonName,'neighbors.csv')
         deg=getSubDegree (nNodes,collapsedTupleSet,commonName,collapsed)
@@ -183,7 +276,7 @@ def collapseInteractome (dictionary,edgeList):
        if row[0] in dictionary and row[1] in dictionary:
            if (dictionary[row[1]],dictionary[row[0]]) not in collapsedTupleSet:
                collapsedTupleSet.add(tuple((dictionary[row[0]],dictionary[row[1]])))
-       else: 
+       else:
            skipped +=1
    return collapsedTupleSet, skipped
 def collapseNodes (dictionary,nodeSet):
@@ -192,7 +285,7 @@ def collapseNodes (dictionary,nodeSet):
     for key in nodeSet:
         if key in dictionary:
             collapsedNodeSet.add(dictionary[key])
-        else: 
+        else:
             skipped2 += 1
     return collapsedNodeSet, skipped2
 #def tupleSettoLoL(collapsedTupleSet): #a function to turn the set of tuples back into a list of lists so it can be processed by getDegree
@@ -201,11 +294,11 @@ def collapseNodes (dictionary,nodeSet):
 #    for ituple in collapsedTupleSet:
 #        for value in ituple:
 #            tuplesList+=[value] #make a list of every value in each tuple
-#    for i in range(len(tuplesList)): #turn that list into a list of lists pairing every value in the list 
+#    for i in range(len(tuplesList)): #turn that list into a list of lists pairing every value in the list
 #        tuplesLoL+=[tuplesList[i:i+1]] #currently only makes a list of values not a list of lists
 #    print(tuplesLoL)
 #    return
-#            
+#
 def importdictionary ():#get the TSV
     fName = 'nodes-uniprot.csv'
     dictionary={}
@@ -217,12 +310,12 @@ def importdictionary ():#get the TSV
             if r[2]=='Aliases':#skip header
                 continue
             dictionary[r[0]]=r[2]
-    #makes a dictionary from index 0 as the key and index 2 as the value 
+    #makes a dictionary from index 0 as the key and index 2 as the value
     return dictionary
 def neighbor2 (nNodes,edgeList):
     nNodes2 =set()
     #if something frod edgeList matches something in nNodes,put it in nNodes2
-    for row in edgeList: 
+    for row in edgeList:
         for item in nNodes:
             if row[0]==item:
                 nNodes2.add(row[1])
@@ -231,18 +324,22 @@ def neighbor2 (nNodes,edgeList):
     return nNodes2
 def neighbors(uniprot,edgeList):
     nNodes=set()
-    for row in edgeList: 
-        #a for loop in which if a row is the uniprot id, 
+    for row in edgeList:
+        #a for loop in which if a row is the uniprot id,
         #then the other row is added to a set
         if row[0] == uniprot:
             nNodes.add(row[1])
         if row[1] == uniprot:
             nNodes.add(row[0])
-    return nNodes#
+    return nNodes
+
+'''
+These plotters need to go in the config file
+'''
 
 def plotter1(x,y,lx,ly):#plots for whole histogram
-    
-    
+
+
     plt.figure(1)
     plt.ylim([-80,1750])
     plt.xlim([-80,8000])
@@ -250,8 +347,8 @@ def plotter1(x,y,lx,ly):#plots for whole histogram
     plt.ylabel('Number of nodes')
     plt.scatter(x,y,marker='.')
     plt.savefig('histogram1.pdf', bbox_inches='tight')
-    
-    plt.figure(2)  
+
+    plt.figure(2)
     plt.ylim([0,1750])
     plt.xlim([0,26])
     plt.scatter(x,y,marker='.')
@@ -268,16 +365,16 @@ def plotter1(x,y,lx,ly):#plots for whole histogram
     plt.savefig('histogram3.pdf', bbox_inches='tight')
 def plotter2(x,y,lx,ly,uniprot):#plots for uniprot id of choice
     plt.figure(1)
-    plt.ylim([1,21]) 
+    plt.ylim([1,21])
     plt.xlabel('Degree of nodes')
     plt.ylabel('Number of nodes')
     plt.scatter(x,y)
     plt.yticks([0,1,2,3,4,5,10,15,20])
     plt.savefig(uniprot+'_1.pdf', bbox_inches='tight')
-    
-    plt.figure(2)    
+
+    plt.figure(2)
     plt.xlim([0,2000])
-    plt.ylim([1,6]) 
+    plt.ylim([1,6])
     plt.scatter(x,y,marker='.')
     plt.xlabel('Degree of nodes')
     plt.ylabel('Number of nodes')
@@ -290,11 +387,11 @@ def plotter2(x,y,lx,ly,uniprot):#plots for uniprot id of choice
     plt.ylabel('log(Number of nodes)')
     plt.scatter(lx,ly,marker='.')
     plt.savefig(uniprot+'_3.pdf', bbox_inches='tight')
-    
+
     return
 def plotter3(x,y,lx,ly):#plots for whole histogram
-    
-    
+
+
     plt.figure(1)
     plt.xlim([-80,8000])
     plt.ylim([-80,1750])
@@ -302,8 +399,8 @@ def plotter3(x,y,lx,ly):#plots for whole histogram
     plt.ylabel('Number of nodes')
     plt.scatter(x,y,marker='.')
     plt.savefig('collapsedhistogram1.pdf', bbox_inches='tight')
-    
-    plt.figure(2)  
+
+    plt.figure(2)
     plt.ylim([0,1750])
     plt.xlim([0,26])
     plt.scatter(x,y,marker='.')
@@ -311,7 +408,7 @@ def plotter3(x,y,lx,ly):#plots for whole histogram
     plt.ylabel('Number of nodes')
     plt.savefig('collapsedhistogram2.pdf', bbox_inches='tight')
 
-    plt.figure(3)  
+    plt.figure(3)
     plt.ylim([-0.5,8])
     plt.xlim([-0.5,9])
     plt.xlabel('log(Degree of nodes)')
@@ -326,9 +423,9 @@ def plotter4(x,y,lx,ly,commonName):#plots for common name of choice
     plt.ylabel('Number of nodes')
     plt.scatter(x,y)
     plt.savefig(commonName+'_1.pdf', bbox_inches='tight')
-    
-    plt.figure(2)    
-    plt.xlim([0,1500]) 
+
+    plt.figure(2)
+    plt.xlim([0,1500])
     plt.scatter(x,y,marker='.')
     plt.xlabel('Degree of nodes')
     plt.ylabel('Number of nodes')
@@ -368,7 +465,7 @@ def getDegree (edgeList,nodeSet):#gather nodes by number of edges
     return deg
 def get_histo (deg):#gather nodes by number of edges
     """
- 
+
 for histogram use the same function in a different order
 d2 starts empty and then for item in nodelist d= deg[item] is d a key in d2?
 if is then ratchet up the counter
@@ -387,15 +484,15 @@ if not then put in a new pair
         hist[key]=val #putting that number that into the dictionary
         x.append(key) #building the x value list
         y.append(val) #building the y value list
-        key += 1 #move to the next x value in the histogram 
+        key += 1 #move to the next x value in the histogram
     return hist,x,y
-def subsetEdges(uniprot,edgeList,nNodes): 
+def subsetEdges(uniprot,edgeList,nNodes):
     #to get the subset of edges for the histogram of neighbors of the PoI
     #a list of edges containing the neighbor nodes of uniprot
     edgeSub=[]
     for row in edgeList:
         for node in nNodes:
-        #a for loop in which if a row is the uniprot id, 
+        #a for loop in which if a row is the uniprot id,
         #then the the row is added to a list, edgeSub
             if row[0] == node:
                 edgeSub.append([row[0],row[1]])
@@ -413,12 +510,12 @@ def getSubDegree (nNodes,edgeList,proteinName,collapsed):#gather nodes by number
     print(proteinName)
     deg = {}
     for item in nNodes:
-        deg[item]=0 #adds key and sets value to zero, key value pair 
+        deg[item]=0 #adds key and sets value to zero, key value pair
     for row in edgeList:
         if row[0] in nNodes:
-            deg[row[0]]+=1 #increase value by one if a given nNodes key is row 0 in edgeList 
+            deg[row[0]]+=1 #increase value by one if a given nNodes key is row 0 in edgeList
         if row[1] in nNodes:
-            deg[row[1]]+=1 #increase value by one if a given nNodes key is row 1 in edgeList 
+            deg[row[1]]+=1 #increase value by one if a given nNodes key is row 1 in edgeList
         if collapsed == True and (row[1],row[0]) in edgeList and row[0] == proteinName:
             print('Be aware,',proteinName,'is neighbors with itself!')#this breaks option 1
     return deg
