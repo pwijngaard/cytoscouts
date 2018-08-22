@@ -2,7 +2,7 @@
 """
 Created on Mon Oct  2 09:55:28 2017
 @author: Petra Wijngaard
-latest version 8 20 2018
+latest version 8 21 2018
 
 TODO:
 [] make it not crash when given invalid inputs on option 1 and 4
