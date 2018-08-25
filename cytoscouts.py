@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 @author: Petra Wijngaard
-latest version 8 24 2018
+latest version 8 25 2018
 
 TODO
 [x] make it not crash when given invalid inputs on option 1 and 4
@@ -11,7 +11,7 @@ TODO
         [x]remove header
         histogram variables
             [x]1
-            []2
+            [X]2
             []3
             []4
         [x]reference dictionary
@@ -22,8 +22,7 @@ import csv
 import math
 import matplotlib.pyplot as plt
 import os.path
-import time  # testing purposes remove from final
-version = 'v0.7'
+version = 'v0.7.1'
 '''
 Default Configuration Section
 TODO
@@ -44,12 +43,15 @@ config['INTERACTOME'] = {
 }
 
 config['REFERENCE'] = {
-    'reference_file': 'nodes-uniprot.csv',
+    'reference_file': 'nodes-accession.csv',
     'skip_header': '1',
     'csv_dialect': 'excel-tab',
 }
 
-config['HISTOGRAM'] = {
+config['HISTOGRAM-1'] = {
+    '(1-0)': '(1-0)',
+    'save_histogram_csv': '0',
+    'histogram_csv_name': 'uncollapsed_interactome',
     '(1-1)': '(1-1)',
     'print_figure1-1': '1',
     'figure1-1_name': 'uncollapsed_histogram_1.pdf',
@@ -63,7 +65,7 @@ config['HISTOGRAM'] = {
     '(1-2)': '(1-2)',
     'print_figure1-2': '1',
     'figure1-2_name': 'uncollapsed_histogram_2.pdf',
-    'figure1-2_autoscale': '1 #excludes xlims',
+    'figure1-2_autoscale': '1',
     'figure1-2_xlim_left': '0',
     'figure1-2_xlim_right': '25',
     'figure1-2_ylim_bottom': '-50',
@@ -80,15 +82,103 @@ config['HISTOGRAM'] = {
     'figure1-3_ylim_top': '9',
     'figure1-3_xlabel': 'log (Degree of nodes)',
     'figure1-3_ylabel': 'log (Number of nodes)',
+    }
+
+config['HISTOGRAM-2'] = {
     '(2-1)': '(2-1)',
+    'print_figure2-1': '1',
+    'figure2-1_autoscale': '1',
+    'figure2-1_xlim_left': '-50',
+    'figure2-1_xlim_right': '8000',
+    'figure2-1_ylim_bottom': '-50',
+    'figure2-1_ylim_top': '1750',
+    'figure2-1_xlabel': 'Degree of nodes',
+    'figure2-1_ylabel': 'Number of nodes',
     '(2-2)': '(2-2)',
+    'print_figure2-2': '1',
+    'figure2-2_autoscale': '1',
+    'figure2-2_xlim_left': '-50',
+    'figure2-2_xlim_right': '8000',
+    'figure2-2_ylim_bottom': '-50',
+    'figure2-2_ylim_top': '1750',
+    'figure2-2_xlabel': 'Degree of nodes',
+    'figure2-2_ylabel': 'Number of nodes',
     '(2-3)': '(2-3)',
+    'print_figure2-2': '1',
+    'figure2-3_autoscale': '1',
+    'figure2-3_xlim_left': '-0.5',
+    'figure2-3_xlim_right': '9',
+    'figure2-3_ylim_bottom': '-0.5',
+    'figure2-3_ylim_top': '9',
+    'figure2-3_xlabel': 'log (Degree of nodes)',
+    'figure2-3_ylabel': 'log (Number of nodes)',
+    }
+
+config['HISTOGRAM-3'] = {
+    '(3-0)': '(3-0)',
+    'save_histogram_csv': '0',
+    'histogram_csv_name': 'collapsed_interactome',
     '(3-1)': '(3-1)',
+    'print_figure3-1': '1',
+    'figure3-1_name': 'collapsed_histogram_1.pdf',
+    'figure3-1_autoscale': '1',
+    'figure3-1_xlim_left': '-50',
+    'figure3-1_xlim_right': '8000',
+    'figure3-1_ylim_bottom': '-50',
+    'figure3-1_ylim_top': '1750',
+    'figure3-1_xlabel': 'Degree of nodes',
+    'figure3-1_ylabel': 'Number of nodes',
     '(3-2)': '(3-2)',
+    'print_figure3-2': '1',
+    'figure3-2_name': 'collapsed_histogram_2.pdf',
+    'figure3-2_autoscale': '1',
+    'figure3-2_xlim_left': '-50',
+    'figure3-2_xlim_right': '8000',
+    'figure3-2_ylim_bottom': '-50',
+    'figure3-2_ylim_top': '1750',
+    'figure3-2_xlabel': 'Degree of nodes',
+    'figure3-2_ylabel': 'Number of nodes',
     '(3-3)': '(3-3)',
+    'print_figure3-3': '1',
+    'figure3-3_name': 'collapsed_histogram_3.pdf',
+    'figure3-3_autoscale': '1',
+    'figure3-3_xlim_left': '-50',
+    'figure3-3_xlim_right': '8000',
+    'figure3-3_ylim_bottom': '-50',
+    'figure3-3_ylim_top': '1750',
+    'figure3-3_xlabel': 'log (Degree of nodes)',
+    'figure3-3_ylabel': 'log (Number of nodes)',
+    }
 
-}
-
+config['HISTOGRAM-4'] = {
+    '(4-1)': '(4-1)',
+    'print_figure4-1': '1',
+    'figure4-1_autoscale': '1',
+    'figure4-1_xlim_left': '-50',
+    'figure4-1_xlim_right': '8000',
+    'figure4-1_ylim_bottom': '-50',
+    'figure4-1_ylim_top': '1750',
+    'figure4-1_xlabel': 'Degree of nodes',
+    'figure4-1_ylabel': 'Number of nodes',
+    '(4-2)': '(4-2)',
+    'print_figure4-2': '1',
+    'figure4-2_autoscale': '1',
+    'figure4-2_xlim_left': '-50',
+    'figure4-2_xlim_right': '8000',
+    'figure4-2_ylim_bottom': '-50',
+    'figure4-2_ylim_top': '1750',
+    'figure4-2_xlabel': 'Degree of nodes',
+    'figure4-2_ylabel': 'Number of nodes',
+    '(4-3)': '(4-3)',
+    'print_figure4-3': '1',
+    'figure4-3_autoscale': '1',
+    'figure4-3_xlim_left': '-0.5',
+    'figure4-3_xlim_right': '9',
+    'figure4-3_ylim_bottom': '-0.5',
+    'figure4-3_ylim_top': '9',
+    'figure4-3_xlabel': 'log (Degree of nodes)',
+    'figure4-3_ylabel': 'log (Number of nodes)',
+    }
 
 if not os.path.isfile('cytoscouts_config.ini'):
     # check to see if there's a config file already
@@ -130,9 +220,9 @@ def checkDefaultInteractome():
         print('Default interactome is set to',
               config['INTERACTOME']['default_interactome'],
               '\n Press 1 to continue using it.\
-              \n Press 0 to enter a new one.\
-              \n You can change the default interactome in\
-              cytoscouts_config.ini')
+               \n Press 0 to enter a new one.\
+               \n You can change the default interactome in\
+               cytoscouts_config.ini')
         while True:  # loop in case of bad inputs
             chooseDefault = input()
             if chooseDefault == '1':
@@ -215,72 +305,54 @@ def defaultCSV():  # get the CSV
 
         except OSError:
             print(
-                'Could not read default file, \
-                please enter a valid filename for now\
-                 and change cytoscouts_config.ini when you have the chance. \
-                 Invalid file: ', fileName)
+                'Could not read default file,\
+                   please enter a valid filename for now\
+                   and change cytoscouts_config.ini when you have the chance.\
+                   Invalid file: ', fileName)
         edgeList, nodeSet = importCSV()  # defaults to manual entry
 
     return edgeList, nodeSet  # saves these two variables
 
 
 def printoptions(edgeList, nodeSet):
-    printIt = input(
-        '\nPress:\
-         \n 1 to print histograms of the uncollapsed interactome,\
-         \n 2 to get neighbors of an ID, \
-         \n 3 to collapse the interactome, \
-         \n 4 to input common name node for collapsed interactome \
-         \n 99 (DEPRECATED) to get secondary neighbors of an ID, \
-         \n otherwise any key to exit: ')
+    menuOption = input(
+        '''\nPress:
+          1 to print histograms of the uncollapsed interactome,
+          2 to get neighbors of an accession ID,
+          3 to collapse the interactome and print histograms,
+          4 to input common name node for collapsed interactome,
+          99 (DEPRECATED) to get secondary neighbors of an accession ID,
+          otherwise any key to exit: ''')
 
-    if printIt == '1':
-        t0 = time.time()
-        deg = getDegree(edgeList, nodeSet)  # calculates the degree
-        t1 = time.time()
-        degtime = t1-t0
-        print('deg took', degtime)
-        t0 = time.time()
-        hist, x, y = getHisto(deg)  # makes a histogram
-        t1 = time.time()
-        histotime = t1-t0
-        print('getHisto took', histotime)
-        t0 = time.time()
-        lx, ly = computeLog(x, y)  # log transformation of x y values
-        t1 = time.time()
-        logtime = t1-t0
-        print('computeLog took', logtime)
-        plotter1(x, y, lx, ly)  # makes it a plot
-
-    if printIt == '2':  # asks for uniprot id and list of list of edges
-        '''
-        [x] rename degList to make it make more sense
-        [x] validate inputs
-        '''
+    if menuOption == '1':
         collapsed = False
-        while True:  # a loop to ensure the inputted ID is in the interactome
-            uniprot = input('Enter ID here: ')
-            if uniprot in nodeSet:
+        deg = getDegree(edgeList, nodeSet)  # calculates the degree
+        hist, x, y = getHisto(deg)  # makes a histogram
+        # list all the nodes by degree
+        lx, ly = computeLog(x, y)  # log transformation of x y values
+        plotter1(x, y, lx, ly)  # makes it a plot
+        if config['HISTOGRAM-1']['save_histogram_csv'] == '1':
+            histoList = makeHistoList(hist)
+            makeFile(histoList,
+                     config['HISTOGRAM-1']['histogram_csv_name'], collapsed)
+
+    if menuOption == '2':
+        collapsed = False
+        while True:
+            accession = input('Enter accession ID here: ')
+            if accession in nodeSet:
                 break
-            print('Error: ', uniprot, 'is not in the interactome. \
-            Enter another ID.')
-
-        nNodes = neighbors(uniprot, edgeList)
-
-        # edgeSub = subsetEdges(uniprot,edgeList,nNodes)
-        # print(nNodes)
-        # print (len(nNodes))
-        # print (type(nNodes))
-        deg = getSubDegree(nNodes, edgeList, uniprot, collapsed)
+            print('Error: ', accession, 'is not in the interactome. \
+            Enter another acession ID.')
+        nNodes = neighbors(accession, edgeList)
+        deg = getSubDegree(nNodes, edgeList, accession, collapsed)
         degList = makeDegList(nNodes, deg)
-        makeFile(degList, uniprot)
-        print('Neighbors list saved to', uniprot, 'neighbors.csv')
-
+        makeFile(degList, accession, collapsed)
         hist, x, y = getHisto(deg)
         lx, ly = computeLog(x, y)
-        plotter2(x, y, lx, ly, uniprot)
+        plotter2(x, y, lx, ly, accession)
 
-    if printIt == '3':
+    if menuOption == '3':
         '''
         TODO
             []make file that shows what IDs the common names correspond to
@@ -288,7 +360,6 @@ def printoptions(edgeList, nodeSet):
         '''
         collapsed = True
         dictionary = importDictionary()
-        # creates a common name dictionary from an attached reference file
         collapsedTupleSet, skipped = collapseInteractome(dictionary, edgeList)
         collapsedNodeSet, skipped2 = collapseNodes(dictionary, nodeSet)
         print('\n Collapsing the interactome...\n', skipped, 'edges skipped.',
@@ -301,10 +372,7 @@ def printoptions(edgeList, nodeSet):
         lx, ly = computeLog(x, y)
         plotter3(x, y, lx, ly)
 
-    if printIt == '4':
-        '''
-        [x]make it so it doesnt crash when fed wrong inputs
-        '''
+    if menuOption == '4':
         collapsed = True
         dictionary = importDictionary()
         # creates a common name dictionary from an attached reference file
@@ -320,28 +388,24 @@ def printoptions(edgeList, nodeSet):
                 break
             print('Error: ', commonName, 'is not in the interactome. \
             Enter another name.')
-        # edgeSub = subsetEdges(uniprot,edgeList,nNodes)
-
         nNodes = neighbors(commonName, collapsedTupleSet)
         deg = getSubDegree(nNodes, collapsedTupleSet, commonName, collapsed)
         hist, x, y = getHisto(deg)
         lx, ly = computeLog(x, y)
         plotter4(x, y, lx, ly, commonName)
         degList = makeDegList(nNodes, deg)
-        makeFile(degList, commonName)
+        makeFile(degList, commonName, collapsed)
         print('Neighbors list saved to', commonName, 'neighbors.csv')
-        # print(deg)
-        # tupleSettoLoL(collapsedTupleSet)
 
-        if printIt == '99':  # asks for uniprot id and list of list of edges
+        if menuOption == '99':  # asks for accession and list of list of edges
             collapsed = False
             while True:  # loop to ensure the inputted ID is in the interactome
-                uniprot = input('Enter ID here: ')
-                if uniprot in nodeSet:
+                accession = input('Enter ID here: ')
+                if accession in nodeSet:
                     break
-                print('Error: ', uniprot, 'is not in the interactome. \
+                print('Error: ', accession, 'is not in the interactome. \
                 Enter another ID.')
-            nNodes = neighbors(uniprot, edgeList)
+            nNodes = neighbors(accession, edgeList)
             nNodes2 = neighbor2(nNodes, edgeList)
             print("primary neighbors")
             print(nNodes)
@@ -353,13 +417,6 @@ def printoptions(edgeList, nodeSet):
 
 
 def getDegree(edgeList, nodeSet):  # gather nodes by number of edges
-    """
-    pseudocode:
-    for {X} from nodeSet
-    degree = find all lists in edgeLists where {X}
-    d['X']= degree
-
-    """
     deg = {}
     for item in nodeSet:
         deg[item] = 0
@@ -369,38 +426,58 @@ def getDegree(edgeList, nodeSet):  # gather nodes by number of edges
     return deg
 
 
-def neighbors(uniprot, edgeList):
+def getHisto(deg):  # gather nodes by number of edges
+    """
+    # TODO: [x] make FASTER
+    # TODO: [x] return sorted tuples for csv export
+
+"""
+    from itertools import groupby
+    hist = sorted(deg.items(), key=lambda x: x[1])  # become sorted /tuples/
+    x = []
+    y = []
+    for value, items in groupby(hist, lambda x: x[1]):  # group by 'value'
+        for i in items:  # items itself is just a memory object
+            x.append(i[1])  # populate list of dictionary values
+    for i in x:  # a better way to do this? idk
+        y.append(x.count(i))  # populate the fequency of said dict vals
+    hist = list(hist)
+    return hist, x, y
+
+
+def makeHistoList(hist):
+    import re
+    histoList = [0]*len(hist)
+    for t in range(0, len(hist)):
+        hist[t] = list(hist[t])
+        key = re.sub('\'', '', hist[t][0])
+        value = str(hist[t][1])
+        histoList[t] = key + ',' + value + '\n'
+    return(histoList)
+
+
+def neighbors(accession, edgeList):
     nNodes = set()
     for row in edgeList:
-        # a for loop in which if a row is the uniprot id,
+        # a for loop in which if a row is the accession id,
         # then the other row is added to a set
-        if row[0] == uniprot:
+        if row[0] == accession:
             nNodes.add(row[1])
-        if row[1] == uniprot:
+        if row[1] == accession:
             nNodes.add(row[0])
     return nNodes
 
 
 def getSubDegree(nNodes, edgeList, proteinName, collapsed):
     # gather nodes by number of edges
-    """
-    pseudocode:
-    for {X} from nNodes
-    degree = find all lists in edgeLists where {X}
-    d['X']= degree
-
-    """
     deg = {}
     for item in nNodes:
         deg[item] = 0
-        # adds key and sets value to zero, key value pair
     for row in edgeList:
         if row[0] in nNodes:
             deg[row[0]] += 1
-            # increase value by one if a given nNodes key is row 0 in edgeList
         if row[1] in nNodes:
             deg[row[1]] += 1
-            # increase value by one if a given nNodes key is row 1 in edgeList
         if collapsed and (row[1], row[0]) in edgeList\
            and row[0] == proteinName:
             print('Be aware,', proteinName, 'is neighbors with itself!')
@@ -408,37 +485,37 @@ def getSubDegree(nNodes, edgeList, proteinName, collapsed):
 
 
 def makeDegList(nNodes, deg):
-    # makes a list of strings containing uniprot,
+    # makes a list of strings containing accession,
     # common name and degree then a new line
     degList = []
     for node in nNodes:
-        degList = degList + [node + ',' + str(deg[node]) + '\n']
+        degList = degList + [str(node) + ',' + str(deg[node]) + '\n']
     return degList
 
 
-def makeFile(commonNames, uniprot):
-    '''
-    TODO:
-        have it automatically pick between Uniprot ID and common name
-    '''
-    file = open(uniprot + " neighbors.csv", "w")
-    file.write('Uniprot ID/Common Name, Degree\n')  # wirtes the header
-    for row in commonNames:  # wites the items from a list of strings
+def makeFile(nodeNames, targetName, collapsed):
+    file = open(targetName + " neighbors.csv", "w")
+    if not collapsed:
+        file.write('Accession ID, Degree\n')
+    else:
+        file.write('Common Name, Degree\n')
+    for row in nodeNames:  # wites the items from a list of strings
         file.write(row)
     file.close()
+    print(targetName, 'neigbors.csv saved to local directory')
     return ()
 
 
 '''
 this one makes it as a list
 def useDictionary (dictionary,nNodes,deg):
-    commonNames=[]
+    nodeNames=[]
     for key in dictionary:
             for node in nNodes:
                 if key == node:
-                    commonNames=commonNames\
+                    nodeNames=nodeNames\
                     +[node]+[dictionary[node]]+[deg[key]]+[';']
-    return commonNames
+    return nodeNames
 '''
 
 
@@ -447,20 +524,20 @@ def collaspedDegs(nNodes, deg):
 
 
 def useDictionary(dictionary, nNodes, deg):
-    # makes a list of strings containing uniprot, common name
+    # makes a list of strings containing accession, common name
     # and degree then a new line
-    commonNames = []
+    nodeNames = []
     for key in dictionary:
         for node in nNodes:
             if key == node:
-                commonNames = commonNames \
+                nodeNames = nodeNames \
                             + [node
                                + ','
                                + dictionary[node]
                                + ','
                                + str(deg[key])
                                + '\n']
-    return commonNames
+    return nodeNames
 
 
 def collapseInteractome(dictionary, edgeList):
@@ -539,70 +616,87 @@ def neighbor2(nNodes, edgeList):
 
 def plotter1(x, y, lx, ly):
 
-    if config['HISTOGRAM']['print_figure1-1'] == '1':
+    if config['HISTOGRAM-1']['print_figure1-1'] == '1':
         plt.figure(1)
-        if config['HISTOGRAM']['figure1-1_autoscale'] != '1':
-            plt.xlim([int(config['HISTOGRAM']['figure1-1_xlim_left']),
-                     int(config['HISTOGRAM']['figure1-1_xlim_right'])])
-            plt.xlim([int(config['HISTOGRAM']['figure1-1_ylim_bottom']),
-                     int(config['HISTOGRAM']['figure1-1_ylim_top'])])
-        plt.xlabel(config['HISTOGRAM']['figure1-1_xlabel'])
-        plt.ylabel(config['HISTOGRAM']['figure1-1_ylabel'])
+        if config['HISTOGRAM-1']['figure1-1_autoscale'] != '1':
+            plt.xlim([int(config['HISTOGRAM-1']['figure1-1_xlim_left']),
+                     int(config['HISTOGRAM-1']['figure1-1_xlim_right'])])
+            plt.xlim([int(config['HISTOGRAM-1']['figure1-1_ylim_bottom']),
+                     int(config['HISTOGRAM-1']['figure1-1_ylim_top'])])
+        plt.xlabel(config['HISTOGRAM-1']['figure1-1_xlabel'])
+        plt.ylabel(config['HISTOGRAM-1']['figure1-1_ylabel'])
         plt.scatter(x, y, marker='.')
-        plt.savefig(config['HISTOGRAM']['figure1-1_name'], bbox_inches='tight')
-        print(config['HISTOGRAM']['figure1-1_name'], "was printed to file.")
+        plt.savefig(config['HISTOGRAM-1']['figure1-1_name'],
+                    bbox_inches='tight')
+        print(config['HISTOGRAM-1']['figure1-1_name'], "was printed to file.")
 
-    if config['HISTOGRAM']['print_figure1-2'] == '1':
+    if config['HISTOGRAM-1']['print_figure1-2'] == '1':
         plt.figure(2)
-        plt.xlim([int(config['HISTOGRAM']['figure1-2_xlim_left']),
-                 int(config['HISTOGRAM']['figure1-2_xlim_right'])])
-        if config['HISTOGRAM']['figure1-2_autoscale'] != '1':
-            plt.ylim([int(config['HISTOGRAM']['figure1-2_ylim_bottom']),
-                     int(config['HISTOGRAM']['figure1-2_ylim_top'])])
-        plt.xlabel(config['HISTOGRAM']['figure1-2_xlabel'])
-        plt.ylabel(config['HISTOGRAM']['figure1-2_ylabel'])
+        plt.xlim([int(config['HISTOGRAM-1']['figure1-2_xlim_left']),
+                 int(config['HISTOGRAM-1']['figure1-2_xlim_right'])])
+        if config['HISTOGRAM-1']['figure1-2_autoscale'] != '1':
+            plt.ylim([int(config['HISTOGRAM-1']['figure1-2_ylim_bottom']),
+                     int(config['HISTOGRAM-1']['figure1-2_ylim_top'])])
+        plt.xlabel(config['HISTOGRAM-1']['figure1-2_xlabel'])
+        plt.ylabel(config['HISTOGRAM-1']['figure1-2_ylabel'])
         plt.scatter(x, y, marker='.')
-        plt.savefig(config['HISTOGRAM']['figure1-2_name'], bbox_inches='tight')
-        print(config['HISTOGRAM']['figure1-2_name'], "was printed to file.")
+        plt.savefig(config['HISTOGRAM-1']['figure1-2_name'],
+                    bbox_inches='tight')
+        print(config['HISTOGRAM-1']['figure1-2_name'], "was printed to file.")
 
-    if config['HISTOGRAM']['print_figure1-3'] == '1':
+    if config['HISTOGRAM-1']['print_figure1-3'] == '1':
         plt.figure(3)
-        if config['HISTOGRAM']['figure1-3_autoscale'] != '1':
-            plt.xlim([int(config['HISTOGRAM']['figure1-3_xlim_left']),
-                     int(config['HISTOGRAM']['figure1-3_xlim_right'])])
-            plt.xlim([int(config['HISTOGRAM']['figure1-3_ylim_bottom']),
-                     int(config['HISTOGRAM']['figure1-3_ylim_top'])])
-        plt.xlabel(config['HISTOGRAM']['figure1-3_xlabel'])
-        plt.ylabel(config['HISTOGRAM']['figure1-3_ylabel'])
+        if config['HISTOGRAM-1']['figure1-3_autoscale'] != '1':
+            plt.xlim([int(config['HISTOGRAM-1']['figure1-3_xlim_left']),
+                     int(config['HISTOGRAM-1']['figure1-3_xlim_right'])])
+            plt.xlim([int(config['HISTOGRAM-1']['figure1-3_ylim_bottom']),
+                     int(config['HISTOGRAM-1']['figure1-3_ylim_top'])])
+        plt.xlabel(config['HISTOGRAM-1']['figure1-3_xlabel'])
+        plt.ylabel(config['HISTOGRAM-1']['figure1-3_ylabel'])
         plt.scatter(lx, ly, marker='.')
-        plt.savefig(config['HISTOGRAM']['figure1-3_name'], bbox_inches='tight')
-        print(config['HISTOGRAM']['figure1-3_name'], "was printed to file.")
+        plt.savefig(config['HISTOGRAM-1']['figure1-3_name'],
+                    bbox_inches='tight')
+        print(config['HISTOGRAM-1']['figure1-3_name'], "was printed to file.")
 
 
-def plotter2(x, y, lx, ly, uniprot):  # plots for uniprot id of choice
-    plt.figure(1)
-    plt.ylim([1, 21])
-    plt.xlabel('Degree of nodes')
-    plt.ylabel('Number of nodes')
-    plt.scatter(x, y)
-    plt.yticks([0, 1, 2, 3, 4, 5, 10, 15, 20])
-    plt.savefig(uniprot + '_1.pdf', bbox_inches='tight')
+def plotter2(x, y, lx, ly, accession):  # plots for accession id of choice
+    if config['HISTOGRAM-2']['print_figure2-1'] == '1':
+        plt.figure(1)
+        if config['HISTOGRAM-2']['figure2-1_autoscale'] != '1':
+            plt.xlim([int(config['HISTOGRAM-2']['figure2-1_xlim_left']),
+                     int(config['HISTOGRAM-2']['figure2-1_xlim_right'])])
+            plt.xlim([int(config['HISTOGRAM-2']['figure2-1_ylim_bottom']),
+                     int(config['HISTOGRAM-2']['figure2-1_ylim_top'])])
+        plt.xlabel(config['HISTOGRAM-2']['figure2-1_xlabel'])
+        plt.ylabel(config['HISTOGRAM-2']['figure2-1_ylabel'])
+        plt.scatter(x, y, marker='.')
+        plt.savefig(accession + '_1.pdf', bbox_inches='tight')
+        print(accession, '_1.pdf was printed to file.')
 
-    plt.figure(2)
-    plt.xlim([0, 2000])
-    plt.ylim([1, 6])
-    plt.scatter(x, y, marker='.')
-    plt.xlabel('Degree of nodes')
-    plt.ylabel('Number of nodes')
-    plt.yticks([0, 1, 2, 3, 4, 5])
-    plt.savefig(uniprot + '_2.pdf', bbox_inches='tight')
+    if config['HISTOGRAM-2']['print_figure2-2'] == '1':
+        plt.figure(2)
+        if config['HISTOGRAM-2']['figure2-2_autoscale'] != '1':
+            plt.xlim([int(config['HISTOGRAM-2']['figure2-2_xlim_left']),
+                     int(config['HISTOGRAM-2']['figure2-2_xlim_right'])])
+            plt.xlim([int(config['HISTOGRAM-2']['figure2-2_ylim_bottom']),
+                     int(config['HISTOGRAM-2']['figure2-2_ylim_top'])])
+        plt.xlabel(config['HISTOGRAM-2']['figure2-2_xlabel'])
+        plt.ylabel(config['HISTOGRAM-2']['figure2-2_ylabel'])
+        plt.scatter(x, y, marker='.')
+        plt.savefig(accession + '_2.pdf', bbox_inches='tight')
+        print(accession, '_2.pdf was printed to file.')
 
     plt.figure(3)
-    plt.xlim([0, 10])
-    plt.xlabel('log(Degree of nodes)')
-    plt.ylabel('log(Number of nodes)')
-    plt.scatter(lx, ly, marker='.')
-    plt.savefig(uniprot + '_3.pdf', bbox_inches='tight')
+    if config['HISTOGRAM-2']['figure2-3_autoscale'] != '1':
+        plt.xlim([int(config['HISTOGRAM-2']['figure2-3_xlim_left']),
+                 int(config['HISTOGRAM-2']['figure2-3_xlim_right'])])
+        plt.xlim([int(config['HISTOGRAM-2']['figure2-3_ylim_bottom']),
+                 int(config['HISTOGRAM-2']['figure2-3_ylim_top'])])
+    plt.xlabel(config['HISTOGRAM-2']['figure2-3_xlabel'])
+    plt.ylabel(config['HISTOGRAM-2']['figure2-3_ylabel'])
+    plt.scatter(x, y, marker='.')
+    plt.savefig(accession + '_3.pdf', bbox_inches='tight')
+    print(accession, '_3.pdf was printed to file.')
 
     return
 
@@ -668,63 +762,19 @@ def computeLog(x, y):
     return (lx, ly)
 
 
-def getHisto(deg):  # gather nodes by number of edges
-    """
-    # TODO: [x] make FASTER
-    # TODO: [x] return sorted dictionary for csv export
-
-"""
-    from itertools import groupby
-    hist = sorted(deg.items(), key=lambda x: x[1])  # become sorted /tuples/
-    x = []
-    y = []
-    for value, items in groupby(hist, lambda x: x[1]):  # group by 'value'
-        for i in items:  # items itself is just a memory object
-            x.append(i[1])  # populate list of dictionary values
-    for i in x:  # a better way to do this? idk
-        y.append(x.count(i))  # populate the fequency of said dict vals
-    return hist, x, y
-
-
-def subsetEdges(uniprot, edgeList, nNodes):
+def subsetEdges(accession, edgeList, nNodes):
     # to get the subset of edges for the histogram of neighbors of the PoI
-    # a list of edges containing the neighbor nodes of uniprot
+    # a list of edges containing the neighbor nodes of accession
     edgeSub = []
     for row in edgeList:
         for node in nNodes:
-            # a for loop in which if a row is the uniprot id,
+            # a for loop in which if a row is the accession id,
             # then the the row is added to a list, edgeSub
             if row[0] == node:
                 edgeSub.append([row[0], row[1]])
             if row[1] == node:
                 edgeSub.append([row[0], row[1]])
     return edgeSub
-
-
-def slowGetHisto(deg):  # gather nodes by number of edges
-
-    """
-THIS NEEDS TO BE FASTER
-for histogram use the same function in a different order
-d2 starts empty and then for item in nodelist d= deg[item] is d a key in d2?
-if is then ratchet up the counter
-if not then put in a new pair
-"""
-    hist = {}  # empty dictionary
-    key = 1  # the first x value in our histogram
-    maxdeg = max(deg.values())  # the last x value in the histogram
-    x = []  # list for x value in histogram
-    y = []  # list for y value in histogram
-    while key <= maxdeg:  # while we havent reached the end of the dictionary
-        val = 0  # include edge counts with no nodes
-        for node in deg.keys():  # take the node !! this is the time bottleneck
-            if deg[node] == key:  # if the node has key number of edges
-                val += 1  # add one to the y axis for that edge number
-        hist[key] = val  # putting that number that into the dictionary
-        x.append(key)  # building the x value list
-        y.append(val)  # building the y value list
-        key += 1  # move to the next x value in the histogram
-    return hist, x, y
 
 
 main()
