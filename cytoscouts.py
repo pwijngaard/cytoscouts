@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-@author: Petra Wijngaard
-latest version 8 26 2018
+author: Petra Wijngaard
+latest version 8 27 2018
 
 TODO
 [x] make it not crash when given invalid inputs on option 1 and 4
@@ -11,10 +11,14 @@ TODO
         [x]remove header
         histogram variables
             [x]1
-            [X]2
+            []2
+                []customizable pdf names
             [X]3
-            [X]4
+            []4
+                []customizable pdf names
+
         [x]reference dictionary
+        [x] select columns
 [] make folders for  results to go in
 """
 
@@ -23,7 +27,7 @@ import configparser
 import csv
 import matplotlib.pyplot as plt
 import os.path
-version = 'v0.7.2'
+version = 'v0.8.0'
 
 
 '''
@@ -43,14 +47,21 @@ config.set('HELP', '# comment here')
 
 config['INTERACTOME'] = {
     'default_interactome': 'interactome-uniprot.txt',
-    'skip_header': '1',
     'csv_dialect': 'excel-tab',
+    'skip_header': '1',
+    'use_evidence': '1',
+    'column_accession_id_1': '0',
+    'column_accession_id_2': '1',
+    'column_evidence': '4',
 }
 
 config['REFERENCE'] = {
     'reference_file': 'nodes-uniprot.csv',
-    'skip_header': '1',
     'csv_dialect': 'excel-tab',
+    'skip_header': '1',
+    'column_ref_accession_id': '0',
+    'coumn_ref_common_name': '1',
+
 }
 
 config['HISTOGRAM-1'] = {
@@ -208,7 +219,7 @@ def main():
     print('\nThis interactome has', (len(edgeList)),
           'edges and contains', len(nodeSet), 'nodes.')
     fileName = cleanFileName(fileName)
-    printOptions(edgeList, nodeSet, fileName)
+    printOptions(edgeList, nodeSet, fileName)  # main menu
     return
 
 
@@ -243,36 +254,37 @@ def checkDefaultInteractome():
 
 def importCSV():  # get the CSV
     '''
+    We know edgeList is the right stuff
     TODO
         [X] program doesnt crash if not supplied an ending
         [X]accept files with .txt and .tsv endings
         [x]enable skip header <=================================
         [x]config for header and dialect
-        []count number of columns
+        []column select
         [x]save interactome name
 
     '''
-    #    validateFileName = None
-    #    while validateFileName == None:
-
-    #        validate = re.compile(r'.*.csv') #(r'.csv|.tsv|.txt')
-    #        validateFileName = validate.search(fileName)
-    nodeSet = set()
     edgeList = []
+    nodeSet = set()
+    id1 = int(config['INTERACTOME']['column_accession_id_1'])
+    id2 = int(config['INTERACTOME']['column_accession_id_2'])
+    evidence = int(config['INTERACTOME']['column_evidence'])
     while True:
         try:
-            fileName = input('Please type .csv file here: ')
+            fileName = config['INTERACTOME']['default_interactome']
             with open(fileName, newline='') as cSVFile:
                 if config['INTERACTOME']['skip_header'] == '1':
                     next(cSVFile)
                 reader = csv.reader(cSVFile,
                                   dialect=config['INTERACTOME']['csv_dialect'])
-                for r in reader:
-                    edgeList.append([r[0], r[1]])  # pair of nodes, aka an edge
-                    nodeSet.add(r[0])  # node 1
-                    nodeSet.add(r[1])  # node2
-
-            break
+                for row in reader:
+                    if config['INTERACTOME']['use_evidence'] == '1':
+                        edgeList.append([row[id1], row[id2], row[evidence]])
+                    else:
+                        edgeList.append([row[id1], row[id2]])
+                    nodeSet.add(row[id1])
+                    nodeSet.add(row[id2])
+                break
 
         except OSError:
             print('Could not read file. '
@@ -285,12 +297,14 @@ def defaultCSV():  # get the CSV
     '''
     TO DO:
         [x]enable skip header
-        []count number of columns
+        [x]count number of columns
 
     '''
-
-    nodeSet = set()
     edgeList = []
+    nodeSet = set()
+    id1 = int(config['INTERACTOME']['column_accession_id_1'])
+    id2 = int(config['INTERACTOME']['column_accession_id_2'])
+    evidence = int(config['INTERACTOME']['column_evidence'])
     while True:
         try:
             fileName = config['INTERACTOME']['default_interactome']
@@ -299,12 +313,14 @@ def defaultCSV():  # get the CSV
                     next(cSVFile)
                 reader = csv.reader(cSVFile,
                                   dialect=config['INTERACTOME']['csv_dialect'])
-                for r in reader:
-                    edgeList.append([r[0], r[1]])  # pair of nodes, aka an edge
-                    nodeSet.add(r[0])  # node 1
-                    nodeSet.add(r[1])  # node2
-
-            break
+                for row in reader:
+                    if config['INTERACTOME']['use_evidence'] == '1':
+                        edgeList.append([row[id1], row[id2], row[evidence]])
+                    else:
+                        edgeList.append([row[id1], row[id2]])
+                    nodeSet.add(row[id1])
+                    nodeSet.add(row[id2])
+                break
 
         except OSError:
             print('Could not read default file,'
@@ -312,7 +328,6 @@ def defaultCSV():  # get the CSV
                   + ' and change cytoscouts_config.ini'
                   + ' when you have the chance. Invalid file: ', fileName)
         edgeList, nodeSet = importCSV()  # defaults to manual entry
-
     return edgeList, nodeSet, fileName
 
 
@@ -334,16 +349,15 @@ def printOptions(edgeList, nodeSet, fileName):
 
     if menuOption == '1':
         collapsed = False
-        deg = getDegree(edgeList, nodeSet)  # calculates the degree
-        hist, x, y = getHisto(deg)  # makes a histogram
-        # list all the nodes by degree
-        lx, ly = computeLog(x, y)  # log transformation of x y values
-        plotter1(x, y, lx, ly, fileName)  # makes it a plot
+        deg = getDegree(edgeList, nodeSet)
+        hist, x, y = getHisto(deg)
+        lx, ly = computeLog(x, y)
+        plotter1(x, y, lx, ly, fileName)
         if config['HISTOGRAM-1']['save_histogram_csv'] == '1':
             histoList = makeHistoList(hist)
-            makeNeighborsFile(histoList,
-                              config['HISTOGRAM-1']['histogram_csv_name'],
-                              collapsed, fileName)
+            makeDegreeFile(histoList,
+                           config['HISTOGRAM-1']['histogram_csv_name'],
+                           collapsed, fileName)
         printOptions(edgeList, nodeSet, fileName)
 
     if menuOption == '2':
@@ -357,7 +371,7 @@ def printOptions(edgeList, nodeSet, fileName):
         nNodes = neighbors(accession, edgeList)
         deg = getSubDegree(nNodes, edgeList, accession, collapsed)
         degList = makeDegList(nNodes, deg)
-        makeNeighborsFile(degList, accession, collapsed, fileName)
+        makeDegreeFile(degList, accession, collapsed, fileName)
         hist, x, y = getHisto(deg)
         lx, ly = computeLog(x, y)
         plotter2(x, y, lx, ly, accession, fileName)
@@ -390,7 +404,6 @@ def printOptions(edgeList, nodeSet, fileName):
     if menuOption == '4':
         collapsed = True
         dictionary = importDictionary()
-        # creates a common name dictionary from an attached reference file
         collapsedTupleSet, skippedEdgeCount, skippedEdgeList\
             = collapseEdgeList(dictionary, edgeList)
         collapsedNodeSet, skippedNodeCount, skippedNodeList\
@@ -412,12 +425,12 @@ def printOptions(edgeList, nodeSet, fileName):
         lx, ly = computeLog(x, y)
         plotter4(x, y, lx, ly, commonName, fileName)
         degList = makeDegList(nNodes, deg)
-        makeNeighborsFile(degList, commonName, collapsed, fileName)
+        makeDegreeFile(degList, commonName, collapsed, fileName)
         printOptions(edgeList, nodeSet, fileName)
 
-        if menuOption == '99':  # asks for accession and list of list of edges
+        if menuOption == '99':
             collapsed = False
-            while True:  # loop to ensure the inputted ID is in the interactome
+            while True:
                 accession = input('Enter ID here: ')
                 if accession in nodeSet:
                     break
@@ -435,7 +448,7 @@ def printOptions(edgeList, nodeSet, fileName):
         return
 
 
-def getDegree(edgeList, nodeSet):  # gather nodes by number of edges
+def getDegree(edgeList, nodeSet):
     deg = {}
     for item in nodeSet:
         deg[item] = 0
@@ -445,13 +458,12 @@ def getDegree(edgeList, nodeSet):  # gather nodes by number of edges
     return deg
 
 
-def getHisto(deg):  # gather nodes by number of edges
-
-    from itertools import groupby
+def getHisto(deg):
+    import itertools
     hist = sorted(deg.items(), key=lambda x: x[1])  # become sorted /tuples/
     x = []
     y = []
-    for value, items in groupby(hist, lambda x: x[1]):  # group by 'value'
+    for value, items in itertools.groupby(hist, lambda x: x[1]):  # by 'value'
         for i in items:  # items itself is just a memory object
             x.append(i[1])  # populate list of dictionary values
     for i in x:  # a better way to do this? idk
@@ -474,38 +486,59 @@ def makeHistoList(hist):
 def neighbors(accession, edgeList):
     nNodes = set()
     for row in edgeList:
-        # a for loop in which if a row is the accession id,
-        # then the other row is added to a set
+        pair = []
         if row[0] == accession:
-            nNodes.add(row[1])
+            pair.append(row[1])
+            if config['INTERACTOME']['use_evidence'] == '1':
+                pair.append(row[2])
+            pair = tuple(pair)
+            nNodes.add(pair)
+        pair = []
         if row[1] == accession:
-            nNodes.add(row[0])
+            pair.append(row[0])
+            if config['INTERACTOME']['use_evidence'] == '1':
+                pair.append(row[2])
+            pair = tuple(pair)
+            nNodes.add(pair)
     return nNodes
 
 
 def getSubDegree(nNodes, edgeList, proteinName, collapsed):
-    # gather nodes by number of edges
     deg = {}
-    for item in nNodes:
-        deg[item] = 0
+    nNodesKeys = set()
+    for tuplePair in nNodes:
+        deg[tuplePair[0]] = 0
+        nNodesKeys.add(tuplePair[0])
+    # TODO: so nNodesKeys contains things that are not in deg?
+    # that seems to be what the error is saying but i dont understand
+    # why that would be the case. they come from the same place
     for row in edgeList:
-        if row[0] in nNodes:
+        if row[0] in nNodesKeys:
             deg[row[0]] += 1
-        if row[1] in nNodes:
+        if row[1] in nNodesKeys:
             deg[row[1]] += 1
-        if collapsed\
-           and (row[1], row[0]) in edgeList\
+        if collapsed and (row[1], row[0]) in edgeList\
            and row[0] == proteinName:
             print('Be aware,', proteinName, 'is neighbors with itself!')
+
     return deg
 
 
 def makeDegList(nNodes, deg):
-    # makes a list of strings containing accession,
-    # common name and degree then a new line
     degList = []
     for node in nNodes:
-        degList.append(str(node) + ',' + str(deg[node]) + '\n')
+        if config['INTERACTOME']['use_evidence'] == '1':
+            degList.append(str(node[0])
+                           + ','
+                           + str(deg[node[0]])
+                           + ','
+                           + str(node[1])
+                           + '\n')
+        else:
+            degList.append(str(node[0])
+                           + ','
+                           + str(deg[node[0]])
+                           + '\n')
     return degList
 
 
@@ -537,21 +570,21 @@ def useDictionary(dictionary, nNodes, deg):
         for node in nNodes:
             if key == node:
                 nodeNames = nodeNames\
-                            + [str(node)
-                               + ','
-                               + str(dictionary[node])
-                               + ','
-                               + str(deg[key])
-                               + '\n']
+                            + str(node)\
+                            + ','\
+                            + str(dictionary[node])\
+                            + ','\
+                            + str(deg[key])\
+                            + '\n'
     return nodeNames
 
 
-def makeNeighborsFile(nodeNames, targetName, collapsed, fileName):
+def makeDegreeFile(nodeNames, targetName, collapsed, fileName):
     file = open(fileName + '_' + targetName + "_neighbors.csv", "w")
     if not collapsed:
-        file.write('Accession ID, Degree\n')
+        file.write('Accession ID, Degree, Evidence\n')
     else:
-        file.write('Common Name, Degree\n')
+        file.write('Common Name, Degree, Evidence\n')
     for row in nodeNames:  # wites the items from a list of strings
         file.write(row)
     file.close()
