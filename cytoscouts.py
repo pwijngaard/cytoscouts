@@ -17,7 +17,7 @@ TODO
             []4
                 []customizable pdf names
 
-        [x]reference dictionary
+        [x]reference refDict
         [x] select columns
 [] make folders for  results to go in
 """
@@ -27,7 +27,7 @@ import configparser
 import csv
 import matplotlib.pyplot as plt
 import os.path
-version = 'v0.8.0'
+version = 'v0.8.1'
 
 
 '''
@@ -60,7 +60,7 @@ config['REFERENCE'] = {
     'csv_dialect': 'excel-tab',
     'skip_header': '1',
     'column_ref_accession_id': '0',
-    'coumn_ref_common_name': '1',
+    'column_ref_common_name': '2',
 
 }
 
@@ -366,10 +366,10 @@ def printOptions(edgeList, nodeSet, fileName):
             accession = input('Enter accession ID here: ')
             if accession in nodeSet:
                 break
-            print('Error: ', accession, 'is not in the interactome. \
-            Enter another acession ID.')
-        nNodes = neighbors(accession, edgeList)
-        deg = getSubDegree(nNodes, edgeList, accession, collapsed)
+            print('Error:', accession, 'is not in the interactome.\
+                   \nEnter another acession ID.')
+        nNodes, nNodesKeys = neighbors(accession, edgeList)
+        deg = getSubDegree(nNodes, edgeList, accession, collapsed, nNodesKeys)
         degList = makeDegList(nNodes, deg)
         makeDegreeFile(degList, accession, collapsed, fileName)
         hist, x, y = getHisto(deg)
@@ -385,29 +385,37 @@ def printOptions(edgeList, nodeSet, fileName):
 
         '''
         collapsed = True
-        dictionary = importDictionary()
-        collapsedTupleSet, skippedEdgeCount, skippedEdgeList\
-            = collapseEdgeList(dictionary, edgeList)
-        collapsedNodeSet, skippedNodeCount, skippedNodeList\
-            = collapseNodeSet(dictionary, nodeSet)
+        refDict = importDictionary()
+        collapsedTupleSet, skippedEdgeList\
+            = collapseEdgeList(refDict, edgeList)
+        collapsedNodeSet, skippedNodeList\
+            = collapseNodeSet(refDict, nodeSet)
         print('Collapsing the interactome...\n',
               len(skippedEdgeList), 'edges skipped.',
               len(skippedNodeList), 'nodes skipped.')
         print('# of edges in collapsed interactome:', len(collapsedTupleSet))
         print('# of nodes collapsed interactome:', len(collapsedNodeSet))
+        processedSkippedEdgeList = processSkippedList(skippedEdgeList)
+        processedSkippedNodeList = processSkippedList(skippedNodeList)
+        makeSkippedFile(processedSkippedEdgeList, processedSkippedNodeList,
+                        fileName)
         deg = getDegree(collapsedTupleSet, collapsedNodeSet)
-        hist, x, y = getHisto(deg)
+        hist, x, y = getHisto(deg)  
         lx, ly = computeLog(x, y)
         plotter3(x, y, lx, ly, fileName)
+        histoList = makeHistoList(hist)
+        makeDegreeFile(histoList,
+                       config['HISTOGRAM-3']['histogram_csv_name'],
+                       collapsed, fileName)
         printOptions(edgeList, nodeSet, fileName)
 
     if menuOption == '4':
         collapsed = True
-        dictionary = importDictionary()
+        refDict = importDictionary()
         collapsedTupleSet, skippedEdgeCount, skippedEdgeList\
-            = collapseEdgeList(dictionary, edgeList)
+            = collapseEdgeList(refDict, edgeList)
         collapsedNodeSet, skippedNodeCount, skippedNodeList\
-            = collapseNodeSet(dictionary, nodeSet)
+            = collapseNodeSet(refDict, nodeSet)
         print('\n Collapsing the interactome...\n',
               len(skippedEdgeList), 'edges skipped.',
               len(skippedNodeList), 'nodes skipped.')
@@ -419,8 +427,9 @@ def printOptions(edgeList, nodeSet, fileName):
                 break
             print('Error:', commonName, 'is not in the interactome. \
                    \n Enter another name.')
-        nNodes = neighbors(commonName, collapsedTupleSet)
-        deg = getSubDegree(nNodes, collapsedTupleSet, commonName, collapsed)
+        nNodes, nNodesKeys = neighbors(commonName, collapsedTupleSet)
+        deg = getSubDegree(nNodes, collapsedTupleSet, commonName, collapsed,
+                           nNodesKeys)
         hist, x, y = getHisto(deg)
         lx, ly = computeLog(x, y)
         plotter4(x, y, lx, ly, commonName, fileName)
@@ -436,7 +445,7 @@ def printOptions(edgeList, nodeSet, fileName):
                     break
                 print('Error: ', accession, 'is not in the interactome. \
                        \n Enter another ID.')
-            nNodes = neighbors(accession, edgeList)
+            nNodes, nNodesKeys = neighbors(accession, edgeList)
             nNodes2 = neighbor2(nNodes, edgeList)
             print("primary neighbors")
             print(nNodes)
@@ -465,7 +474,7 @@ def getHisto(deg):
     y = []
     for value, items in itertools.groupby(hist, lambda x: x[1]):  # by 'value'
         for i in items:  # items itself is just a memory object
-            x.append(i[1])  # populate list of dictionary values
+            x.append(i[1])  # populate list of refDict values
     for i in x:  # a better way to do this? idk
         y.append(x.count(i))  # populate the fequency of said dict vals
     hist = list(hist)
@@ -485,6 +494,7 @@ def makeHistoList(hist):
 
 def neighbors(accession, edgeList):
     nNodes = set()
+    nNodesKeys = set()
     for row in edgeList:
         pair = []
         if row[0] == accession:
@@ -493,6 +503,7 @@ def neighbors(accession, edgeList):
                 pair.append(row[2])
             pair = tuple(pair)
             nNodes.add(pair)
+            nNodesKeys.add(pair[0])
         pair = []
         if row[1] == accession:
             pair.append(row[0])
@@ -500,18 +511,14 @@ def neighbors(accession, edgeList):
                 pair.append(row[2])
             pair = tuple(pair)
             nNodes.add(pair)
-    return nNodes
+            nNodesKeys.add(pair[0])
+    return nNodes, nNodesKeys
 
 
-def getSubDegree(nNodes, edgeList, proteinName, collapsed):
+def getSubDegree(nNodes, edgeList, proteinName, collapsed, nNodesKeys):
     deg = {}
-    nNodesKeys = set()
-    for tuplePair in nNodes:
-        deg[tuplePair[0]] = 0
-        nNodesKeys.add(tuplePair[0])
-    # TODO: so nNodesKeys contains things that are not in deg?
-    # that seems to be what the error is saying but i dont understand
-    # why that would be the case. they come from the same place
+    for key in nNodesKeys:
+        deg[key] = 0
     for row in edgeList:
         if row[0] in nNodesKeys:
             deg[row[0]] += 1
@@ -542,40 +549,34 @@ def makeDegList(nNodes, deg):
     return degList
 
 
-def importDictionary():  # get the TSV
-    '''
-    TODO
-    []Apply the config file properties here
-        [X] Header
-        [X] ref name
-        [X] dialect
-        [ ] reference columns
-    '''
+def importDictionary():
+    ref1 = int(config['REFERENCE']['column_ref_accession_id'])
+    ref2 = int(config['REFERENCE']['column_ref_common_name'])
     fName = config['REFERENCE']['reference_file']
-    dictionary = {}
+    refDict = {}
     with open(fName, newline='') as cSVFile:
         reader = csv.reader(cSVFile,
                             dialect=config['REFERENCE']['csv_dialect'])
         if config['REFERENCE']['skip_header'] == '1':
             next(cSVFile)
         for r in reader:
-            dictionary[r[0]] = r[2]
-    # makes a dictionary from index 0 as the key and index 2 as the value
-    return dictionary
+            refDict[r[ref1]] = r[ref2]
+    return refDict
 
 
-def useDictionary(dictionary, nNodes, deg):
+def useDictionary(refDict, nNodes, deg):
     nodeNames = []
-    for key in dictionary:
-        for node in nNodes:
-            if key == node:
-                nodeNames = nodeNames\
-                            + str(node)\
-                            + ','\
-                            + str(dictionary[node])\
-                            + ','\
-                            + str(deg[key])\
-                            + '\n'
+    for key in refDict:  # accession ID with common name
+        for node in nNodes:  # (neighbor accession IDs, evidence) tuple
+            if key == node[0]:
+                nodeNames.append(str(node)
+                                 + ','
+                                 + str(refDict[node[0]])  # common name
+                                 + ','
+                                 + str(deg[key])  # degree
+                                 + ','
+                                 + str(refDict[node[1]])  # evidence
+                                 + '\n')
     return nodeNames
 
 
@@ -592,45 +593,83 @@ def makeDegreeFile(nodeNames, targetName, collapsed, fileName):
     return ()
 
 
+def makeSkippedFile(processedSkippedEdgeList, processedSkippedNodeList,
+                    fileName):
+    file = open(fileName + '_' + config['HISTOGRAM-3']['histogram_csv_name']
+                + '_skipped_edges.csv', 'w')
+    file.write('Accession ID 1, Accession ID 2, Evidence\n')
+    for row in processedSkippedEdgeList:
+        file.write(row)
+    file.close()
+    print(fileName, config['HISTOGRAM-3']['histogram_csv_name'],
+          'skipped_edges.csv saved to local directory')
+
+    file = open(fileName + '_' + config['HISTOGRAM-3']['histogram_csv_name']
+                + '_skipped_nodes.csv', 'w')
+    file.write('Skipped Nodes\n')
+    for row in processedSkippedNodeList:
+        file.write(row)
+    file.close()
+    print(fileName, config['HISTOGRAM-3']['histogram_csv_name'],
+          'skipped_edges.csv saved to local directory')
+
+    return ()
+
+
 def processSkippedList(skippedList):
+    import re
     processedSkippedList = []
     for item in skippedList:
-        processedSkippedList.append(str(item) + '\n')
+        processedSkippedList.append(re.sub('\'|\[|\]', '', str(item)) + '\n')
     return processedSkippedList
 
 
-def collapseEdgeList(dictionary, edgeList):
+def collapseEdgeList(refDict, edgeList):
+    # TODO: find out why collapsedTupleSetEvidence is so much larger
+    # collapsedTupleSetEvidence should be the same size as collapsedTupleSet
+    #
+    # import pdb; pdb.set_trace()
     collapsedTupleSet = set()
-    skippedEdgeCount = 0
+    collapsedTupleSetEvidence = set()
     skippedEdgeList = []
     for row in edgeList:
-        if row[0] in dictionary and row[1] in dictionary:
-            if (dictionary[row[1]], dictionary[row[0]])\
-             not in collapsedTupleSet:
-                collapsedTupleSet.add(tuple((dictionary[row[0]],
-                                             dictionary[row[1]])))
+        if config['INTERACTOME']['use_evidence'] == '1':
+            if row[0] in refDict and row[1] in refDict:
+                if (refDict[row[1]], refDict[row[0]])\
+                 not in collapsedTupleSet:
+                    collapsedTupleSet.add((refDict[row[0]],
+                                           refDict[row[1]]))
+                    collapsedTupleSetEvidence.add((refDict[row[0]],
+                                                   refDict[row[1]],
+                                                   row[2]))
+            else:
+                skippedEdgeList.append(row)
         else:
-            skippedEdgeCount += 1
-            skippedEdgeList.append(row)
-    return collapsedTupleSet, skippedEdgeCount, skippedEdgeList
+            if row[0] in refDict and row[1] in refDict:
+                if (refDict[row[1]], refDict[row[0]])\
+                 not in collapsedTupleSet:
+                    collapsedTupleSetEvidence.add(tuple((refDict[row[0]],
+                                                         refDict[row[1]])))
+            else:
+                skippedEdgeList.append(row)
+    print(len(collapsedTupleSet), len(collapsedTupleSetEvidence))
+    return collapsedTupleSetEvidence, skippedEdgeList
 
 
-def collapseNodeSet(dictionary, nodeSet):
+def collapseNodeSet(refDict, nodeSet):
     collapsedNodeSet = set()
-    skippedNodeCount = 0
     skippedNodeList = []
     for node in nodeSet:
-        if node in dictionary:
-            collapsedNodeSet.add(dictionary[node])
+        if node in refDict:
+            collapsedNodeSet.add(refDict[node])
         else:
-            skippedNodeCount += 1
             skippedNodeList.append(node)
-    return collapsedNodeSet, skippedNodeCount, skippedNodeList
+    return collapsedNodeSet, skippedNodeList
 
 
 def neighbor2(nNodes, edgeList):
     nNodes2 = set()
-    # if something frod edgeList matches something in nNodes,put it in nNodes2
+    # if something from edgeList matches something in nNodes,put it in nNodes2
     for row in edgeList:
         for item in nNodes:
             if row[0] == item:
@@ -673,7 +712,7 @@ Histogram Section
 
 def plotter1(x, y, lx, ly, fileName):
     if config['HISTOGRAM-1']['print_figure1-1'] == '1':
-        plt.figure(1)
+        plt.figure()
         if config['HISTOGRAM-1']['figure1-1_autoscale'] != '1':
             plt.xlim([int(config['HISTOGRAM-1']['figure1-1_xlim_left']),
                       int(config['HISTOGRAM-1']['figure1-1_xlim_right'])])
@@ -688,7 +727,7 @@ def plotter1(x, y, lx, ly, fileName):
               'was printed to file.')
 
     if config['HISTOGRAM-1']['print_figure1-2'] == '1':
-        plt.figure(2)
+        plt.figure()
         if config['HISTOGRAM-1']['figure1-2_autoscale'] != '1':
             plt.xlim([int(config['HISTOGRAM-1']['figure1-2_xlim_left']),
                       int(config['HISTOGRAM-1']['figure1-2_xlim_right'])])
@@ -703,7 +742,7 @@ def plotter1(x, y, lx, ly, fileName):
               'was printed to file.')
 
     if config['HISTOGRAM-1']['print_figure1-3'] == '1':
-        plt.figure(3)
+        plt.figure()
         if config['HISTOGRAM-1']['figure1-3_autoscale'] != '1':
             plt.xlim([int(config['HISTOGRAM-1']['figure1-3_xlim_left']),
                       int(config['HISTOGRAM-1']['figure1-3_xlim_right'])])
@@ -720,7 +759,7 @@ def plotter1(x, y, lx, ly, fileName):
 
 def plotter2(x, y, lx, ly, accession, fileName):
     if config['HISTOGRAM-2']['print_figure2-1'] == '1':
-        plt.figure(1)
+        plt.figure()
         if config['HISTOGRAM-2']['figure2-1_autoscale'] != '1':
             plt.xlim([int(config['HISTOGRAM-2']['figure2-1_xlim_left']),
                       int(config['HISTOGRAM-2']['figure2-1_xlim_right'])])
@@ -734,7 +773,7 @@ def plotter2(x, y, lx, ly, accession, fileName):
         print(fileName, accession, 'neighbors 1.pdf was printed to file.')
 
     if config['HISTOGRAM-2']['print_figure2-2'] == '1':
-        plt.figure(2)
+        plt.figure()
         if config['HISTOGRAM-2']['figure2-2_autoscale'] != '1':
             plt.xlim([int(config['HISTOGRAM-2']['figure2-2_xlim_left']),
                       int(config['HISTOGRAM-2']['figure2-2_xlim_right'])])
@@ -748,7 +787,7 @@ def plotter2(x, y, lx, ly, accession, fileName):
         print(fileName, accession, 'neighbors_2.pdf was printed to file.')
 
     if config['HISTOGRAM-2']['print_figure2-3'] == '1':
-        plt.figure(3)
+        plt.figure()
         if config['HISTOGRAM-2']['figure2-3_autoscale'] != '1':
             plt.xlim([int(config['HISTOGRAM-2']['figure2-3_xlim_left']),
                       int(config['HISTOGRAM-2']['figure2-3_xlim_right'])])
@@ -766,7 +805,7 @@ def plotter2(x, y, lx, ly, accession, fileName):
 
 def plotter3(x, y, lx, ly, fileName):
     if config['HISTOGRAM-3']['print_figure3-1'] == '1':
-        plt.figure(1)
+        plt.figure()
         if config['HISTOGRAM-3']['figure3-1_autoscale'] != '1':
             plt.xlim([int(config['HISTOGRAM-3']['figure3-1_xlim_left']),
                       int(config['HISTOGRAM-3']['figure3-1_xlim_right'])])
@@ -775,13 +814,13 @@ def plotter3(x, y, lx, ly, fileName):
         plt.xlabel(config['HISTOGRAM-3']['figure3-1_xlabel'])
         plt.ylabel(config['HISTOGRAM-3']['figure3-1_ylabel'])
         plt.scatter(x, y, marker='.')
-        plt.savefig(fileName + config['HISTOGRAM-3']['figure3-1_name']
+        plt.savefig(fileName + '_' + config['HISTOGRAM-3']['figure3-1_name']
                     + '.pdf', bbox_inches='tight')
         print(fileName, config['HISTOGRAM-3']['figure3-1_name'] + '.pdf',
               'was printed to file.')
 
     if config['HISTOGRAM-3']['print_figure3-2'] == '1':
-        plt.figure(2)
+        plt.figure()
         if config['HISTOGRAM-3']['figure3-2_autoscale'] != '1':
             plt.xlim([int(config['HISTOGRAM-3']['figure3-2_xlim_left']),
                       int(config['HISTOGRAM-3']['figure3-2_xlim_right'])])
@@ -790,13 +829,13 @@ def plotter3(x, y, lx, ly, fileName):
         plt.xlabel(config['HISTOGRAM-3']['figure3-2_xlabel'])
         plt.ylabel(config['HISTOGRAM-3']['figure3-2_ylabel'])
         plt.scatter(x, y, marker='.')
-        plt.savefig(fileName + config['HISTOGRAM-3']['figure3-2_name']
+        plt.savefig(fileName + '_' + config['HISTOGRAM-3']['figure3-2_name']
                     + '.pdf', bbox_inches='tight')
         print(fileName, config['HISTOGRAM-3']['figure3-2_name'] + '.pdf',
               'was printed to file.')
 
     if config['HISTOGRAM-3']['print_figure3-3'] == '1':
-        plt.figure(3)
+        plt.figure()
         if config['HISTOGRAM-3']['figure3-3_autoscale'] != '1':
             plt.xlim([int(config['HISTOGRAM-3']['figure3-3_xlim_left']),
                       int(config['HISTOGRAM-3']['figure3-3_xlim_right'])])
@@ -805,7 +844,7 @@ def plotter3(x, y, lx, ly, fileName):
         plt.xlabel(config['HISTOGRAM-3']['figure3-3_xlabel'])
         plt.ylabel(config['HISTOGRAM-3']['figure3-3_ylabel'])
         plt.scatter(lx, ly, marker='.')
-        plt.savefig(fileName + config['HISTOGRAM-3']['figure3-3_name']
+        plt.savefig(fileName + '_' + config['HISTOGRAM-3']['figure3-3_name']
                     + '.pdf', bbox_inches='tight')
         print(fileName, config['HISTOGRAM-3']['figure3-3_name'] + '.pdf',
               'was printed to file.')
@@ -814,7 +853,7 @@ def plotter3(x, y, lx, ly, fileName):
 
 def plotter4(x, y, lx, ly, commonName, fileName):
     if config['HISTOGRAM-4']['print_figure4-1'] == '1':
-        plt.figure(1)
+        plt.figure()
         if config['HISTOGRAM-4']['figure4-1_autoscale'] != '1':
             plt.xlim([int(config['HISTOGRAM-4']['figure4-1_xlim_left']),
                       int(config['HISTOGRAM-4']['figure4-1_xlim_right'])])
@@ -829,7 +868,7 @@ def plotter4(x, y, lx, ly, commonName, fileName):
               'neighbors_histogram_1.pdf was printed to file.')
 
     if config['HISTOGRAM-4']['print_figure4-2'] == '1':
-        plt.figure(2)
+        plt.figure()
         if config['HISTOGRAM-4']['figure4-2_autoscale'] != '1':
             plt.xlim([int(config['HISTOGRAM-4']['figure4-2_xlim_left']),
                       int(config['HISTOGRAM-4']['figure4-2_xlim_right'])])
@@ -844,7 +883,7 @@ def plotter4(x, y, lx, ly, commonName, fileName):
               'neighbors_histogram_2.pdf was printed to file.')
 
     if config['HISTOGRAM-4']['print_figure4-3'] == '1':
-        plt.figure(3)
+        plt.figure()
         if config['HISTOGRAM-4']['figure4-3_autoscale'] != '1':
             plt.xlim([int(config['HISTOGRAM-4']['figure4-3_xlim_left']),
                       int(config['HISTOGRAM-4']['figure4-3_xlim_right'])])
