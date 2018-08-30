@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 author: Petra Wijngaard
-latest version 8 29 2018
+latest version 8 30 2018
 
 TODO
 [x] make it not crash when given invalid inputs on option 1 and 4
@@ -27,7 +27,7 @@ import configparser
 import csv
 import matplotlib.pyplot as plt
 import os.path
-version = 'v0.8.3'
+version = 'v0.9.0'
 
 
 '''
@@ -366,6 +366,7 @@ def printOptions(edgeList, nodeSet, fileName):
 
     if menuOption == '2':
         collapsed = False
+        refDict = 0
 
         while True:
             accession = input('Enter accession ID here: ')
@@ -376,7 +377,7 @@ def printOptions(edgeList, nodeSet, fileName):
 
         nNodes, nNodesE = neighbors(accession, edgeList)
         deg = getSubDegree(nNodes, edgeList)
-        degList = makeDegList(nNodes, nNodesE, deg)
+        degList = makeDegList(nNodes, nNodesE, deg, collapsed, refDict)
         makeDegreeFile(degList, accession, collapsed, fileName)
 
         hist, x, y = getHisto(deg)
@@ -392,7 +393,7 @@ def printOptions(edgeList, nodeSet, fileName):
         # collapse the inteactome
         refDict = importDictionary()
         print('Collapsing the interactome...\n')
-        cListListEM, sEdgeList, cEvidence = collapseEdgeList(refDict, edgeList)
+        cListListEM, sEdgeList = collapseEdgeList(refDict, edgeList)
         cNodeSet, sNodeSet = collapseNodeSet(refDict, nodeSet)
         print(len(sEdgeList), 'edges skipped.')
         print(len(sNodeSet), 'nodes skipped.')
@@ -423,7 +424,7 @@ def printOptions(edgeList, nodeSet, fileName):
         # collapse the inteactome
         refDict = importDictionary()
         print('Collapsing the interactome...\n')
-        cListListEM, sEdgeList, cEvidence = collapseEdgeList(refDict, edgeList)
+        cListListEM, sEdgeList = collapseEdgeList(refDict, edgeList)
         cNodeSet, sNodeSet = collapseNodeSet(refDict, nodeSet)
         print(len(sEdgeList), 'edges skipped.')
         print(len(sNodeSet), 'nodes skipped.')
@@ -445,7 +446,7 @@ def printOptions(edgeList, nodeSet, fileName):
         hist, x, y = getHisto(deg)
         lx, ly = computeLog(x, y)
         plotter4(x, y, lx, ly, commonName, fileName)
-        degList = makeDegList(nNodes, nNodesE, deg)
+        degList = makeDegList(nNodes, nNodesE, deg, collapsed, refDict)
         makeDegreeFile(degList, commonName, collapsed, fileName)
 
         printOptions(edgeList, nodeSet, fileName)
@@ -551,26 +552,57 @@ def getSubDegree(nNodes, edgeList):
     return deg
 
 
-def makeDegList(nNodes, nNodesE, deg):
+def makeDegList(nNodes, nNodesE, deg, collapsed, refDict):
     useEvidence = config['INTERACTOME']['use_evidence']
-    degList = []  # a list containing [node,degree,evidence]
+    degList = []  # a list containing [commonName,acID,degree,evidence]
 
-    print(deg)
-    if useEvidence == '1':
+    if useEvidence == '1' and collapsed:
         for node in nNodesE:
-            degList.append(str(node[0])
+            degList.append(str(node[0])  # commonName
                            + ','
-                           + str(deg[node[0]])
+                           + acIDsByCName(refDict,node[0])  # acID
                            + ','
-                           + str(node[1])
+                           + str(deg[node[0]])  # degree
+                           + ','
+                           + str(node[1])  # evidence
                            + '\n')
-    elif useEvidence != '1':
+
+    elif useEvidence != '1' and collapsed:
         for node in nNodes:
-            degList.append(str(node[0])
+            degList.append(str(node[0])  # commonName
                            + ','
-                           + str(deg[node[0]])
+                           + acIDsByCName(refDict[node[0]])  # acID
+                           + ','
+                           + str(deg[node[0]])  # degree
                            + '\n')
+
+        if useEvidence == '1' and not collapsed:
+            for node in nNodesE:
+                degList.append(str(node[0])
+                               + ','
+                               + str(deg[node[0]])
+                               + ','
+                               + str(node[1])
+                               + '\n')
+
+        elif useEvidence != '1' and not collapsed:
+            for node in nNodes:
+                degList.append(str(node[0])
+                               + ','
+                               + str(deg[node[0]])
+                               + '\n')
     return degList
+
+
+def acIDsByCName(refDict, commonName):
+    acIDList = []
+    pairList = refDict.items()  # list of every key:value pair
+
+    for pair in pairList:
+        if pair[1] == commonName:  # if value == commonName
+            acIDList.append(pair[0])  # append key
+    acIDs = ' '.join(acIDList)
+    return acIDs
 
 
 def importDictionary():
@@ -589,7 +621,7 @@ def importDictionary():
     return refDict
 
 
-def useDictionary(refDict, nNodes, deg):
+def useDictionary(refDict, nNodes, deg):  # TODO: redundant unused function
     nodeNames = []
 
     for key in refDict:  # accession ID with common name
@@ -611,7 +643,7 @@ def makeDegreeFile(nodeNames, targetName, collapsed, fileName):
     if not collapsed:
         file.write('Accession ID, Degree, Evidence\n')
     else:
-        file.write('Common Name, Degree, Evidence\n')
+        file.write('Common Name, Accession ID(s), Degree, Evidence\n')
     for row in nodeNames:  # wites the items from a list of strings
         file.write(row)
     file.close()
@@ -659,8 +691,6 @@ def collapseEdgeList(refDict, edgeList):
     cTupleListE = []  # TODO cTupleSetE as a list <- can this be skipped?
     cListListE = []  # cTupleListE as a list of lists
     cListListEM = []  # list of all tuple with evidence, without redundancies
-    cEvidence = []  # 'collapsed evidence'
-                    # meant to be used with other fns, dunno if it's useful
 
     # gathering the edges and evidence, if selected in config file
     # if both nodes are keys in reference make tuple with values
@@ -714,9 +744,8 @@ def collapseEdgeList(refDict, edgeList):
     for i in cListListE:
         if i != [0]:
             cListListEM.append(i)
-            cEvidence.append(i[2])
 
-    return cListListEM, sEdgeList, cEvidence
+    return cListListEM, sEdgeList
 
 
 def collapseNodeSet(refDict, nodeSet):
