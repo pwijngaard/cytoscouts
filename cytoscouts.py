@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 author: Petra Wijngaard
-latest version 8 279 2018
+latest version 8 29 2018
 
 TODO
 [x] make it not crash when given invalid inputs on option 1 and 4
@@ -27,7 +27,7 @@ import configparser
 import csv
 import matplotlib.pyplot as plt
 import os.path
-version = 'v0.8.2'
+version = 'v0.8.3'
 
 
 '''
@@ -374,9 +374,9 @@ def printOptions(edgeList, nodeSet, fileName):
             print('Error:', accession, 'is not in the interactome.\
                    \nEnter another acession ID.')
 
-        nNodes, nNodesKeys = neighbors(accession, edgeList)
-        deg = getSubDegree(nNodes, edgeList, accession, collapsed, nNodesKeys)
-        degList = makeDegList(nNodes, deg)
+        nNodes, nNodesE = neighbors(accession, edgeList)
+        deg = getSubDegree(nNodes, edgeList)
+        degList = makeDegList(nNodes, nNodesE, deg)
         makeDegreeFile(degList, accession, collapsed, fileName)
 
         hist, x, y = getHisto(deg)
@@ -391,11 +391,11 @@ def printOptions(edgeList, nodeSet, fileName):
 
         # collapse the inteactome
         refDict = importDictionary()
+        print('Collapsing the interactome...\n')
         cListListEM, sEdgeList, cEvidence = collapseEdgeList(refDict, edgeList)
         cNodeSet, sNodeSet = collapseNodeSet(refDict, nodeSet)
-        print('Collapsing the interactome...\n',
-              len(sEdgeList), 'edges skipped.',
-              len(sNodeSet), 'nodes skipped.')
+        print(len(sEdgeList), 'edges skipped.')
+        print(len(sNodeSet), 'nodes skipped.')
         print('# of edges in collapsed interactome:', len(cListListEM))
         print('# of nodes collapsed interactome:', len(cNodeSet))
 
@@ -422,11 +422,11 @@ def printOptions(edgeList, nodeSet, fileName):
 
         # collapse the inteactome
         refDict = importDictionary()
+        print('Collapsing the interactome...\n')
         cListListEM, sEdgeList, cEvidence = collapseEdgeList(refDict, edgeList)
         cNodeSet, sNodeSet = collapseNodeSet(refDict, nodeSet)
-        print('Collapsing the interactome...\n',
-              len(sEdgeList), 'edges skipped.',
-              len(sNodeSet), 'nodes skipped.')
+        print(len(sEdgeList), 'edges skipped.')
+        print(len(sNodeSet), 'nodes skipped.')
         print('# of edges in collapsed interactome:', len(cListListEM))
         print('# of nodes collapsed interactome:', len(cNodeSet))
 
@@ -439,15 +439,13 @@ def printOptions(edgeList, nodeSet, fileName):
                    \n Enter another name.')
 
         # find neighbors of common name
-        nNodes, nNodesKeys = neighbors(commonName, cListListEM)
-        deg = getSubDegree(nNodes, cListListEM, commonName, collapsed,
-                           nNodesKeys)
-
+        nNodes, nNodesE = neighbors(commonName, cListListEM)
+        deg = getSubDegree(nNodes, cListListEM)
         # print histo and csv
         hist, x, y = getHisto(deg)
         lx, ly = computeLog(x, y)
         plotter4(x, y, lx, ly, commonName, fileName)
-        degList = makeDegList(nNodes, deg)
+        degList = makeDegList(nNodes, nNodesE, deg)
         makeDegreeFile(degList, commonName, collapsed, fileName)
 
         printOptions(edgeList, nodeSet, fileName)
@@ -460,7 +458,7 @@ def printOptions(edgeList, nodeSet, fileName):
                     break
                 print('Error: ', accession, 'is not in the interactome. \
                        \n Enter another ID.')
-            nNodes, nNodesKeys = neighbors(accession, edgeList)
+            nNodes, nNodesE = neighbors(accession, edgeList)
             nNodes2 = neighbor2(nNodes, edgeList)
             print("primary neighbors")
             print(nNodes)
@@ -508,55 +506,66 @@ def makeHistoList(hist):
 
 
 def neighbors(accession, edgeList):
-    nNodes = set()
-    nNodesKeys = set()
+    useEvidence = config['INTERACTOME']['use_evidence']
+    nNodes = set()  # a set of tuples each containing node w/ edge w/ accession
+    nNodesE = set()  # set of tuples like nNodes but with evidence too
+
+    # if one half of an edge is accession, then the other is added to nNodes
+    # if useEvidence is selected, the evidence is included in the tuple
     for row in edgeList:
         pair = []
-        if row[0] == accession:
+        if row[0] == accession and useEvidence == '1':
             pair.append(row[1])
-            if config['INTERACTOME']['use_evidence'] == '1':
-                pair.append(row[2])
+            pair.append(row[2])
             pair = tuple(pair)
-            nNodes.add(pair)
-            nNodesKeys.add(pair[0])
+            nNodes.add(row[1])
+            nNodesE.add(pair)
+        elif row[0] == accession and useEvidence != '1':
+            nNodes.add(row[1])
+
         pair = []
-        if row[1] == accession:  # TODO: program hangs here on option 4
+        if row[1] == accession and useEvidence == '1':
+            nNodes.add(row[0])
             pair.append(row[0])
-            if config['INTERACTOME']['use_evidence'] == '1':
-                pair.append(row[2])
+            pair.append(row[2])
             pair = tuple(pair)
-            nNodes.add(pair)
-            nNodesKeys.add(pair[0])
-    return nNodes, nNodesKeys
+            nNodesE.add(pair)
+        elif row[1] == accession and useEvidence != '1':
+            nNodes.add(row[0])
+
+    if tuple(accession) in nNodes:
+        print('Be aware,', accession, 'is neighbors with itself!')
+    return nNodes, nNodesE
 
 
-def getSubDegree(nNodes, edgeList, proteinName, collapsed, nNodesKeys):
-    deg = {}
-    for key in nNodesKeys:
+def getSubDegree(nNodes, edgeList):
+    deg = {}  # dictionary of node:degree
+    # for every node in nNodes increase deg[node] when node is in an edge
+    for key in nNodes:
         deg[key] = 0
     for row in edgeList:
-        if row[0] in nNodesKeys:
+        if row[0] in nNodes:
             deg[row[0]] += 1
-        if row[1] in nNodesKeys:
+        if row[1] in nNodes:
             deg[row[1]] += 1
-        if collapsed and (row[1], row[0]) in edgeList\
-           and row[0] == proteinName:
-            print('Be aware,', proteinName, 'is neighbors with itself!')
-
     return deg
 
 
-def makeDegList(nNodes, deg):
-    degList = []
-    for node in nNodes:
-        if config['INTERACTOME']['use_evidence'] == '1':
+def makeDegList(nNodes, nNodesE, deg):
+    useEvidence = config['INTERACTOME']['use_evidence']
+    degList = []  # a list containing [node,degree,evidence]
+
+    print(deg)
+    if useEvidence == '1':
+        for node in nNodesE:
             degList.append(str(node[0])
                            + ','
                            + str(deg[node[0]])
                            + ','
                            + str(node[1])
                            + '\n')
-        else:
+    elif useEvidence != '1':
+        for node in nNodes:
             degList.append(str(node[0])
                            + ','
                            + str(deg[node[0]])
@@ -569,6 +578,7 @@ def importDictionary():
     ref2 = int(config['REFERENCE']['column_ref_common_name'])
     fName = config['REFERENCE']['reference_file']
     refDict = {}
+
     with open(fName, newline='') as cSVFile:
         reader = csv.reader(cSVFile,
                             dialect=config['REFERENCE']['csv_dialect'])
@@ -581,6 +591,7 @@ def importDictionary():
 
 def useDictionary(refDict, nNodes, deg):
     nodeNames = []
+
     for key in refDict:  # accession ID with common name
         for node in nNodes:  # (neighbor accession IDs, evidence) tuple
             if key == node[0]:
@@ -608,8 +619,7 @@ def makeDegreeFile(nodeNames, targetName, collapsed, fileName):
     return ()
 
 
-def makeSkippedFile(pSEdgeList, pSNodeSet,
-                    fileName):
+def makeSkippedFile(pSEdgeList, pSNodeSet, fileName):
     file = open(fileName + '_' + config['HISTOGRAM-3']['histogram_csv_name']
                 + '_skipped_edges.csv', 'w')
     file.write('Accession ID 1, Accession ID 2, Evidence\n')
@@ -634,6 +644,7 @@ def makeSkippedFile(pSEdgeList, pSNodeSet,
 def processsList(sList):
     import re
     pSList = []  # processed list of skipped values, stripped of junk
+
     for item in sList:
         pSList.append(re.sub('\'|\[|\]', '', str(item)) + '\n')
     return pSList
@@ -641,30 +652,35 @@ def processsList(sList):
 
 def collapseEdgeList(refDict, edgeList):
     # TODO: find out what cyclomatic complexity is and reduce it
+    useEvidence = config['INTERACTOME']['use_evidence']
     cTupleSet = set()  # collapsed tuple set of edges
     cTupleSetE = set()  # cTupleSet with evidence
     sEdgeList = []  # list of skipped edge
     cTupleListE = []  # TODO cTupleSetE as a list <- can this be skipped?
-    cListListE = []  # c TupleListE as a list of lists
-    cListListEM = []  # list of all lists with evidence, without redundancies
-    cEvidence = []  # 'collapsed evidence' as a variable makes it more portable
-    #  if both nodes are keys in reference make tuple set with values
+    cListListE = []  # cTupleListE as a list of lists
+    cListListEM = []  # list of all tuple with evidence, without redundancies
+    cEvidence = []  # 'collapsed evidence'
+                    # meant to be used with other fns, dunno if it's useful
 
-    # gathering the edges and evidence
+    # gathering the edges and evidence, if selected in config file
+    # if both nodes are keys in reference make tuple with values
+    # add to set cTupleSet to remove duplicate tuples
+    # use cTupleSetE to keep track of evidence, but only accept tuples
+    # not in cTupleSet.
+    # If use evidence is not selected, cTupleSetE is still used as the returned
+    # variable, even though it contains no evidence
     for row in edgeList:
-        if config['INTERACTOME']['use_evidence'] == '1':
-            if row[0] in refDict and row[1] in refDict:
-                if (refDict[row[1]], refDict[row[0]]) not in cTupleSet:
+        if useEvidence == '1' and row[0] in refDict and row[1] in refDict:
+            if (refDict[row[1]], refDict[row[0]]) not in cTupleSet:
                     cTupleSet.add((refDict[row[0]], refDict[row[1]]))
                     cTupleSetE.add((refDict[row[0]], refDict[row[1]], row[2]))
-            else:
-                sEdgeList.append(row)
+        elif useEvidence != '1' and row[0] in refDict and row[1] in refDict:
+            if (refDict[row[1]], refDict[row[0]]) not in cTupleSet:
+                cTupleSetE.add((refDict[row[0]], refDict[row[1]]))
+        elif row[0] not in refDict or row[1] not in refDict:
+            sEdgeList.append(row)
         else:
-            if row[0] in refDict and row[1] in refDict:
-                if (refDict[row[1]], refDict[row[0]]) not in cTupleSetE:
-                    cTupleSetE.add((refDict[row[0]], refDict[row[1]]))
-            else:
-                sEdgeList.append(row)
+            continue
 
     # combining the redundant evidence for collapsed nodes
     # if the list of edge&evidence is the same as the one adjacent to it
@@ -675,32 +691,31 @@ def collapseEdgeList(refDict, edgeList):
         cListListE.append(list(cTupleListE[row]))
 
     for row in range(0, len(cListListE)):
-        if row == 0:
-            if cListListE[row][0:2] == cListListE[row + 1][0:2]\
+        if row == 0 and cListListE[row][0:2] == cListListE[row + 1][0:2]\
                     and cListListE[row][2] != cListListE[row + 1][2]:
                         cListListE[row + 1][2] = cListListE[row + 1][2]\
                                                   + '+'\
                                                   + cListListE[row][2]
                         cListListE[row] = ['0']
 
-        elif row > 0:
-            if cListListE[row][0:2] == cListListE[row - 1][0:2]\
-                    and cListListE[row][2] != cListListE[row - 1][2]:
+        elif row > 0 and cListListE[row][0:2] == cListListE[row - 1][0:2]\
+                     and cListListE[row][2] != cListListE[row - 1][2]:
                         cListListE[row][2] = cListListE[row - 1][2]\
                                                   + '+'\
                                                   + cListListE[row][2]
                         cListListE[row - 1] = [0]
 
-        else:
+        elif row < 0:
             print('Negative rows?!?!?!')
+
+        else:
+            continue
 
     for i in cListListE:
         if i != [0]:
             cListListEM.append(i)
-    for i in cListListEM:
-        cEvidence.append(i)
-    print('hey!')  # TODO: get rid of later
-    print(cListListEM)
+            cEvidence.append(i[2])
+
     return cListListEM, sEdgeList, cEvidence
 
 
