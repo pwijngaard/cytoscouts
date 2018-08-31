@@ -283,8 +283,7 @@ def checkDefaultInteractome():
     return edgeList, nodeSet, fileName
 
 
-def importCSV():  # get the CSV
-
+def importCSV():
     edgeList = []
     nodeSet = set()
     id1 = int(config['INTERACTOME']['column_accession_id_1'])
@@ -315,13 +314,7 @@ def importCSV():  # get the CSV
     return edgeList, nodeSet, fileName
 
 
-def defaultCSV():  # get the CSV
-    '''
-    TO DO:
-        [x]enable skip header
-        [x]count number of columns
-
-    '''
+def defaultCSV():
     edgeList = []
     nodeSet = set()
     id1 = int(config['INTERACTOME']['column_accession_id_1'])
