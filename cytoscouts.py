@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 '''
 author: Petra Wijngaard
-latest version 8 30 2018
+latest version 8 31 2018
 '''
 
 
@@ -10,7 +10,7 @@ import csv
 import matplotlib.pyplot as plt
 import os.path
 
-version = 'v1.0'
+version = 'v1.1'
 
 
 '''
@@ -362,115 +362,136 @@ def printOptions(edgeList, nodeSet, fileName):
           otherwise any key to exit: ''')
 
     if menuOption == '1':
-        collapsed = False
-
-        # make histograms and csvs
-        deg = getDegree(edgeList, nodeSet)
-        hist, x, y = getHisto(deg)
-        lx, ly = computeLog(x, y)
-        plotter1(x, y, lx, ly, fileName)
-
-        if config['HISTOGRAM-1']['save_histogram_csv'] == '1':
-            histoList = makeHistoList(hist)
-            makeDegreeFile(histoList,
-                           config['HISTOGRAM-1']['histogram_csv_name'],
-                           collapsed, fileName)
-
-        printOptions(edgeList, nodeSet, fileName)
+        optionOne(edgeList, nodeSet, fileName)
 
     if menuOption == '2':
-        collapsed = False
-        refDict = 0
-        while True:
-            accession = input('Enter accession ID here: ')
-            if accession in nodeSet:
-                break
-            print('Error:', accession, 'is not in the interactome.\
-                   \nEnter another acession ID.')
-
-        nNodes, nNodesE = neighbors(accession, edgeList)
-        deg = getSubDegree(nNodes, edgeList)
-        degList = makeDegList(nNodes, nNodesE, deg, collapsed, refDict)
-        makeDegreeFile(degList, accession, collapsed, fileName)
-
-        hist, x, y = getHisto(deg)
-        lx, ly = computeLog(x, y)
-        plotter2(x, y, lx, ly, accession, fileName)
-
-        printOptions(edgeList, nodeSet, fileName)
+        optionTwo(edgeList, nodeSet, fileName)
 
     if menuOption == '3':
-        collapsed = True
-        checkOK = checkRefFile()
-        if not checkOK:
-            printOptions(edgeList, nodeSet, fileName)
-
-        # collapse the inteactome
-        refDict = importDictionary()
-        print('Collapsing the interactome...\n')
-        cListListEM, sEdgeList = collapseEdgeList(refDict, edgeList)
-        cNodeSet, sNodeSet = collapseNodeSet(refDict, nodeSet)
-        print(len(sEdgeList), 'edges skipped.')
-        print(len(sNodeSet), 'nodes skipped.')
-        print('# of edges in collapsed interactome:', len(cListListEM))
-        print('# of nodes collapsed interactome:', len(cNodeSet))
-
-        # make a file of the skipped edges
-        pSEdgeList = processsList(sEdgeList)
-        pSNodeSet = processsList(sNodeSet)
-        makeSkippedFile(pSEdgeList, pSNodeSet,
-                        fileName)
-
-        # make histogram pdfs and csvs
-        deg = getDegree(cListListEM, cNodeSet)
-        hist, x, y = getHisto(deg)
-        lx, ly = computeLog(x, y)
-        plotter3(x, y, lx, ly, fileName)
-        if config['HISTOGRAM-3']['save_histogram_csv'] == '1':
-            histoList = makeHistoList(hist)
-            makeDegreeFile(histoList,
-                           config['HISTOGRAM-3']['histogram_csv_name'],
-                           collapsed, fileName)
-
-        printOptions(edgeList, nodeSet, fileName)
+        optionThree(edgeList, nodeSet, fileName)
 
     if menuOption == '4':
-        collapsed = True
-        checkOK = checkRefFile()
-        if not checkOK:
-            printOptions(edgeList, nodeSet, fileName)
+        optionFour(edgeList, nodeSet, fileName)
+    return
 
-        # collapse the inteactome
-        refDict = importDictionary()
-        print('Collapsing the interactome...\n')
-        cListListEM, sEdgeList = collapseEdgeList(refDict, edgeList)
-        cNodeSet, sNodeSet = collapseNodeSet(refDict, nodeSet)
-        print(len(sEdgeList), 'edges skipped.')
-        print(len(sNodeSet), 'nodes skipped.')
-        print('# of edges in collapsed interactome:', len(cListListEM))
-        print('# of nodes collapsed interactome:', len(cNodeSet))
 
-        # get common name
-        while True:
-            commonName = input('Enter common name here: ')
-            if commonName in cNodeSet:
-                break
-            print('Error:', commonName, 'is not in the interactome. \
-                   \n Enter another name.')
+def optionOne(edgeList, nodeSet, fileName):
+    collapsed = False
 
-        # find neighbors of common name
-        nNodes, nNodesE = neighbors(commonName, cListListEM)
-        deg = getSubDegree(nNodes, cListListEM)
-        # print histo and csv
-        hist, x, y = getHisto(deg)
-        lx, ly = computeLog(x, y)
-        plotter4(x, y, lx, ly, commonName, fileName)
-        degList = makeDegList(nNodes, nNodesE, deg, collapsed, refDict)
-        makeDegreeFile(degList, commonName, collapsed, fileName)
+    # make histograms and csvs
+    deg = getDegree(edgeList, nodeSet)
+    hist, x, y = getHisto(deg)
+    lx, ly = computeLog(x, y)
+    plotter1(x, y, lx, ly, fileName)
 
+    if config['HISTOGRAM-1']['save_histogram_csv'] == '1':
+        histoList = makeHistoList(hist)
+        makeDegreeFile(histoList,
+                       config['HISTOGRAM-1']['histogram_csv_name'],
+                       collapsed, fileName)
+
+    printOptions(edgeList, nodeSet, fileName)
+    return
+
+
+def optionTwo(edgeList, nodeSet, fileName):
+    collapsed = False
+    refDict = 0
+
+    while True:
+        accession = input('Enter accession ID here: ')
+        if accession in nodeSet:
+            break
+        print('Error:', accession, 'is not in the interactome.\
+               \nEnter another acession ID.')
+
+    nNodes, nNodesE = neighbors(accession, edgeList)
+    deg = getSubDegree(nNodes, edgeList)
+    degList = makeDegList(nNodes, nNodesE, deg, collapsed, refDict)
+    makeDegreeFile(degList, accession, collapsed, fileName)
+
+    hist, x, y = getHisto(deg)
+    lx, ly = computeLog(x, y)
+    plotter2(x, y, lx, ly, accession, fileName)
+
+    printOptions(edgeList, nodeSet, fileName)
+    return
+
+
+def optionThree(edgeList, nodeSet, fileName):
+    collapsed = True
+    checkOK = checkRefFile()
+
+    if not checkOK:
         printOptions(edgeList, nodeSet, fileName)
 
-        return
+    # collapse the inteactome
+    refDict = importDictionary()
+    print('Collapsing the interactome...\n')
+    cListListEM, sEdgeList = collapseEdgeList(refDict, edgeList)
+    cNodeSet, sNodeSet = collapseNodeSet(refDict, nodeSet)
+    print(len(sEdgeList), 'edges skipped.')
+    print(len(sNodeSet), 'nodes skipped.')
+    print('# of edges in collapsed interactome:', len(cListListEM))
+    print('# of nodes collapsed interactome:', len(cNodeSet))
+
+    # make a file of the skipped edges
+    pSEdgeList = processsList(sEdgeList)
+    pSNodeSet = processsList(sNodeSet)
+    makeSkippedFile(pSEdgeList, pSNodeSet,
+                    fileName)
+
+    # make histogram pdfs and csvs
+    deg = getDegree(cListListEM, cNodeSet)
+    hist, x, y = getHisto(deg)
+    lx, ly = computeLog(x, y)
+    plotter3(x, y, lx, ly, fileName)
+    if config['HISTOGRAM-3']['save_histogram_csv'] == '1':
+        histoList = makeHistoList(hist)
+        makeDegreeFile(histoList,
+                       config['HISTOGRAM-3']['histogram_csv_name'],
+                       collapsed, fileName)
+
+    printOptions(edgeList, nodeSet, fileName)
+    return
+
+
+def optionFour(edgeList, nodeSet, fileName):
+    collapsed = True
+    checkOK = checkRefFile()
+    if not checkOK:
+        printOptions(edgeList, nodeSet, fileName)
+
+    # collapse the inteactome
+    refDict = importDictionary()
+    print('Collapsing the interactome...\n')
+    cListListEM, sEdgeList = collapseEdgeList(refDict, edgeList)
+    cNodeSet, sNodeSet = collapseNodeSet(refDict, nodeSet)
+    print(len(sEdgeList), 'edges skipped.')
+    print(len(sNodeSet), 'nodes skipped.')
+    print('# of edges in collapsed interactome:', len(cListListEM))
+    print('# of nodes collapsed interactome:', len(cNodeSet))
+
+    # get common name
+    while True:
+        commonName = input('Enter common name here: ')
+        if commonName in cNodeSet:
+            break
+        print('Error:', commonName, 'is not in the interactome. \
+               \n Enter another name.')
+
+    # find neighbors of common name
+    nNodes, nNodesE = neighbors(commonName, cListListEM)
+    deg = getSubDegree(nNodes, cListListEM)
+    # print histo and csv
+    hist, x, y = getHisto(deg)
+    lx, ly = computeLog(x, y)
+    plotter4(x, y, lx, ly, commonName, fileName)
+    degList = makeDegList(nNodes, nNodesE, deg, collapsed, refDict)
+    makeDegreeFile(degList, commonName, collapsed, fileName)
+
+    printOptions(edgeList, nodeSet, fileName)
+    return
 
 
 def getDegree(edgeList, nodeSet):
@@ -578,21 +599,21 @@ def makeDegList(nNodes, nNodesE, deg, collapsed, refDict):
                            + str(deg[node[0]])  # degree
                            + '\n')
 
-        if useEvidence == '1' and not collapsed:
-            for node in nNodesE:
-                degList.append(str(node[0])
-                               + ','
-                               + str(deg[node[0]])
-                               + ','
-                               + str(node[1])
-                               + '\n')
+    elif useEvidence == '1' and not collapsed:
+        for node in nNodesE:
+            degList.append(str(node[0])
+                           + ','
+                           + str(deg[node[0]])
+                           + ','
+                           + str(node[1])
+                           + '\n')
 
-        elif useEvidence != '1' and not collapsed:
-            for node in nNodes:
-                degList.append(str(node[0])
-                               + ','
-                               + str(deg[node[0]])
-                               + '\n')
+    elif useEvidence != '1' and not collapsed:
+        for node in nNodes:
+            degList.append(str(node[0])
+                           + ','
+                           + str(deg[node[0]])
+                           + '\n')
     return degList
 
 
