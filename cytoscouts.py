@@ -1,40 +1,20 @@
 # -*- coding: utf-8 -*-
-"""
+'''
 author: Petra Wijngaard
 latest version 8 30 2018
-
-TODO
-[x] make it not crash when given invalid inputs on option 1 and 4
-[] enable a config file with include configparser
-    options to include:
-        [X]default interactome
-        [x]remove header
-        histogram variables
-            [x]1
-            []2
-                []customizable pdf names
-            [X]3
-            []4
-                []customizable pdf names
-
-        [x]reference refDict
-        [x] select columns
-[] make folders for  results to go in
-"""
+'''
 
 
 import configparser
 import csv
 import matplotlib.pyplot as plt
 import os.path
-version = 'v0.9.0'
+
+version = 'v1.0'
 
 
 '''
 Default Configuration Section
-TODO
-expand help section
-[]expand histogram section
 '''
 
 
@@ -43,26 +23,77 @@ config = configparser.ConfigParser(allow_no_value=True)
 # Setting up the default configuration file
 
 config.add_section('HELP')
-config.set('HELP', '# comment here')
+config.set('HELP', '''
+                      # cytoscouts' configuration is handled by this file.
+                      # Edit the values on the right hand side of the '='
+                      # according to the instructions given above the equation.
+                      # If the configuration file ever becomes broken, simply
+                      # delete cytoscouts_config.ini, and a new configuration
+                      # file will be created by cytoscouts with the default
+                      # values the next time cytoscouts is run.
+                      #
+                      # Questions? plwijngaard@gmail.com
+''')
 
-config['INTERACTOME'] = {
-    'default_interactome': 'interactome-uniprot.txt',
-    'csv_dialect': 'excel-tab',
-    'skip_header': '1',
-    'use_evidence': '1',
-    'column_accession_id_1': '0',
-    'column_accession_id_2': '1',
-    'column_evidence': '4',
-}
+config.add_section('INTERACTOME')
 
-config['REFERENCE'] = {
-    'reference_file': 'nodes-uniprot.csv',
-    'csv_dialect': 'excel-tab',
-    'skip_header': '1',
-    'column_ref_accession_id': '0',
-    'column_ref_common_name': '2',
+config.set('INTERACTOME', '  # Write file name, including extension, of '
+           + 'interactome in local directory to load automatically '
+           + 'at startup, or leave set to 0 to turn off.')
+config.set('INTERACTOME', 'default_interactome', 'interactome-uniprot.txt')
 
-}
+config.set('INTERACTOME', '  # Set to 1 to include evidence in cytoscouts\' '
+           + 'output. This has a performance impact and requires '
+           + 'column_evidence to be set to a column containing evidence.')
+config.set('INTERACTOME', 'use_evidence', '1')
+
+config.set('INTERACTOME', '  # If there is a header in the first row, '
+           + 'set to 1 to skip the header. Set to 0 to include the first row.')
+config.set('INTERACTOME', 'skip_header', '1')
+
+config.set('INTERACTOME', '  # Set to excel for comma delimited, '
+           + 'set to excel-tab for tab delimited, '
+           + 'set to unix for unix style delimitation.')
+config.set('INTERACTOME', 'csv_dialect', 'excel-tab')
+
+config.set('INTERACTOME', '  # Set to the column that contains the first '
+           + 'half of the interaction pair. Column numbering starts at 0.')
+config.set('INTERACTOME', 'column_accession_id_1', '0')
+
+config.set('INTERACTOME', '  # Set to the column that contains the second '
+           + 'half of the interaction pair. Column numbering starts at 0.')
+config.set('INTERACTOME', 'column_accession_id_2', '1')
+
+config.set('INTERACTOME', '  # Set to the column that contains the evidence '
+           + 'for the interaction pair. Column numbering starts at 0.')
+config.set('INTERACTOME', 'column_evidence', '4')
+
+
+config.add_section('REFERENCE')
+
+config.set('REFERENCE', '  # Write file name, including extension, of '
+           + 'the reference file for common names in local directory. '
+           + 'Set to 0 to turn off. Doing so disables collapsing '
+           + 'the interactome or using common names in outputs.')
+config.set('REFERENCE', 'reference_file', 'nodes-uniprot.txt')
+
+config.set('REFERENCE', '  # If there is a header in the first row, '
+           + 'set to 1 to skip the header. Set to 0 to include the first row.')
+config.set('REFERENCE', 'skip_header', '1')
+
+config.set('REFERENCE', '  # Set to excel for comma delimited, '
+           + 'set to excel-tab for tab delimited, '
+           + 'set to unix for unix style delimitation.')
+config.set('REFERENCE', 'csv_dialect', 'excel-tab')
+
+config.set('REFERENCE', '  # Set to the column that contains the accession ID '
+           + 'Column numbering starts at 0.')
+config.set('REFERENCE', 'column_ref_accession_id', '0')
+
+config.set('REFERENCE', '  # Set to the column that contains the common name '
+           + 'Column numbering starts at 0.')
+config.set('REFERENCE', 'column_ref_common_name', '2')
+
 
 config['HISTOGRAM-1'] = {
     '(1-0)': '(1-0)',
@@ -253,25 +284,16 @@ def checkDefaultInteractome():
 
 
 def importCSV():  # get the CSV
-    '''
-    We know edgeList is the right stuff
-    TODO
-        [X] program doesnt crash if not supplied an ending
-        [X]accept files with .txt and .tsv endings
-        [x]enable skip header <=================================
-        [x]config for header and dialect
-        []column select
-        [x]save interactome name
 
-    '''
     edgeList = []
     nodeSet = set()
     id1 = int(config['INTERACTOME']['column_accession_id_1'])
     id2 = int(config['INTERACTOME']['column_accession_id_2'])
     evidenceCol = int(config['INTERACTOME']['column_evidence'])
+
     while True:
         try:
-            fileName = config['INTERACTOME']['default_interactome']
+            fileName = input('Type interactome name here:')
             with open(fileName, newline='') as cSVFile:
                 if config['INTERACTOME']['skip_header'] == '1':
                     next(cSVFile)
@@ -344,7 +366,6 @@ def printOptions(edgeList, nodeSet, fileName):
           2 to get neighbors of an accession ID,
           3 to collapse the interactome and print histograms,
           4 to input common name node for collapsed interactome,
-          99 (DEPRECATED) to get secondary neighbors of an accession ID,
           otherwise any key to exit: ''')
 
     if menuOption == '1':
@@ -367,7 +388,6 @@ def printOptions(edgeList, nodeSet, fileName):
     if menuOption == '2':
         collapsed = False
         refDict = 0
-
         while True:
             accession = input('Enter accession ID here: ')
             if accession in nodeSet:
@@ -387,8 +407,10 @@ def printOptions(edgeList, nodeSet, fileName):
         printOptions(edgeList, nodeSet, fileName)
 
     if menuOption == '3':
-        # TODO: make file with AcIDs grouped by common name
         collapsed = True
+        checkOK = checkRefFile()
+        if not checkOK:
+            printOptions(edgeList, nodeSet, fileName)
 
         # collapse the inteactome
         refDict = importDictionary()
@@ -411,15 +433,19 @@ def printOptions(edgeList, nodeSet, fileName):
         hist, x, y = getHisto(deg)
         lx, ly = computeLog(x, y)
         plotter3(x, y, lx, ly, fileName)
-        histoList = makeHistoList(hist)
-        makeDegreeFile(histoList,
-                       config['HISTOGRAM-3']['histogram_csv_name'],
-                       collapsed, fileName)
+        if config['HISTOGRAM-3']['save_histogram_csv'] == '1':
+            histoList = makeHistoList(hist)
+            makeDegreeFile(histoList,
+                           config['HISTOGRAM-3']['histogram_csv_name'],
+                           collapsed, fileName)
 
         printOptions(edgeList, nodeSet, fileName)
 
     if menuOption == '4':
         collapsed = True
+        checkOK = checkRefFile()
+        if not checkOK:
+            printOptions(edgeList, nodeSet, fileName)
 
         # collapse the inteactome
         refDict = importDictionary()
@@ -450,23 +476,6 @@ def printOptions(edgeList, nodeSet, fileName):
         makeDegreeFile(degList, commonName, collapsed, fileName)
 
         printOptions(edgeList, nodeSet, fileName)
-
-        if menuOption == '99':
-            collapsed = False
-            while True:
-                accession = input('Enter ID here: ')
-                if accession in nodeSet:
-                    break
-                print('Error: ', accession, 'is not in the interactome. \
-                       \n Enter another ID.')
-            nNodes, nNodesE = neighbors(accession, edgeList)
-            nNodes2 = neighbor2(nNodes, edgeList)
-            print("primary neighbors")
-            print(nNodes)
-            print(len(nNodes))
-            print("secondary neighbors")
-            print(len(nNodes2))
-            printOptions(edgeList, nodeSet, fileName)
 
         return
 
@@ -560,7 +569,7 @@ def makeDegList(nNodes, nNodesE, deg, collapsed, refDict):
         for node in nNodesE:
             degList.append(str(node[0])  # commonName
                            + ','
-                           + acIDsByCName(refDict,node[0])  # acID
+                           + acIDsByCName(refDict, node[0])  # acID
                            + ','
                            + str(deg[node[0]])  # degree
                            + ','
@@ -605,6 +614,19 @@ def acIDsByCName(refDict, commonName):
     return acIDs
 
 
+def checkRefFile():
+    refFile = config['REFERENCE']['reference_file']
+
+    if not os.path.isfile(refFile):
+        checkOK = False
+        print('\n Error: ', refFile, 'is an invalid reference file. You '
+              + 'cannot use this option with an invalid reference file. '
+              + 'Change reference_file in cytoscouts_config.ini.')
+    else:
+        checkOK = True
+    return checkOK
+
+
 def importDictionary():
     ref1 = int(config['REFERENCE']['column_ref_accession_id'])
     ref2 = int(config['REFERENCE']['column_ref_common_name'])
@@ -619,23 +641,6 @@ def importDictionary():
         for r in reader:
             refDict[r[ref1]] = r[ref2]
     return refDict
-
-
-def useDictionary(refDict, nNodes, deg):  # TODO: redundant unused function
-    nodeNames = []
-
-    for key in refDict:  # accession ID with common name
-        for node in nNodes:  # (neighbor accession IDs, evidence) tuple
-            if key == node[0]:
-                nodeNames.append(str(node)
-                                 + ','
-                                 + str(refDict[node[0]])  # common name
-                                 + ','
-                                 + str(deg[key])  # degree
-                                 + ','
-                                 + str(refDict[node[1]])  # evidence
-                                 + '\n')
-    return nodeNames
 
 
 def makeDegreeFile(nodeNames, targetName, collapsed, fileName):
@@ -683,12 +688,11 @@ def processsList(sList):
 
 
 def collapseEdgeList(refDict, edgeList):
-    # TODO: find out what cyclomatic complexity is and reduce it
     useEvidence = config['INTERACTOME']['use_evidence']
     cTupleSet = set()  # collapsed tuple set of edges
     cTupleSetE = set()  # cTupleSet with evidence
     sEdgeList = []  # list of skipped edge
-    cTupleListE = []  # TODO cTupleSetE as a list <- can this be skipped?
+    cTupleListE = []  # cTupleSetE as a list
     cListListE = []  # cTupleListE as a list of lists
     cListListEM = []  # list of all tuple with evidence, without redundancies
 
@@ -731,8 +735,8 @@ def collapseEdgeList(refDict, edgeList):
         elif row > 0 and cListListE[row][0:2] == cListListE[row - 1][0:2]\
                      and cListListE[row][2] != cListListE[row - 1][2]:
                         cListListE[row][2] = cListListE[row - 1][2]\
-                                                  + '+'\
-                                                  + cListListE[row][2]
+                                             + '+'\
+                                             + cListListE[row][2]
                         cListListE[row - 1] = [0]
 
         elif row < 0:
@@ -757,18 +761,6 @@ def collapseNodeSet(refDict, nodeSet):
         else:
             sNodeSet.append(node)
     return cNodeSet, sNodeSet
-
-
-def neighbor2(nNodes, edgeList):
-    nNodes2 = set()
-    # if something from edgeList matches something in nNodes,put it in nNodes2
-    for row in edgeList:
-        for item in nNodes:
-            if row[0] == item:
-                nNodes2.add(row[1])
-            if row[1] == item:
-                nNodes2.add(row[0])
-    return nNodes2
 
 
 def subsetEdges(accession, edgeList, nNodes):
