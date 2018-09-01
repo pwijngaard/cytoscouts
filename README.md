@@ -30,6 +30,7 @@ To run cytoscouts open a terminal window in the cytoscouts folder by right click
 ```
 python3 cytoscouts.py
 ```
+### Cytoscouts
 
 When using the script the user has four options: 
 
