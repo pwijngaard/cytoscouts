@@ -40,7 +40,7 @@ config.add_section('INTERACTOME')
 config.set('INTERACTOME', '  # Write file name, including extension, of '
            + 'interactome in local directory to load automatically '
            + 'at startup, or leave set to 0 to turn off.')
-config.set('INTERACTOME', 'default_interactome', 'interactome-uniprot.txt')
+config.set('INTERACTOME', 'default_interactome', '0')
 
 config.set('INTERACTOME', '  # Set to 1 to include evidence in cytoscouts\' '
            + 'output. This has a performance impact and requires '
